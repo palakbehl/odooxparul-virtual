@@ -66,6 +66,7 @@ exports.register = async (req, res) => {
         country: user.country,
         bio: user.bio,
         profileImage: user.profileImage,
+        role: user.role,
         createdAt: user.createdAt
       }
     });
@@ -141,6 +142,7 @@ exports.login = async (req, res) => {
         country: user.country,
         bio: user.bio,
         profileImage: user.profileImage,
+        role: user.role,
         createdAt: user.createdAt
       }
     });
@@ -174,6 +176,7 @@ exports.getMe = async (req, res) => {
         country: user.country,
         bio: user.bio,
         profileImage: user.profileImage,
+        role: user.role,
         createdAt: user.createdAt
       }
     });
