@@ -82,15 +82,15 @@ const Footer = () => {
             <div className="space-y-3">
               <div className="flex items-center gap-3 text-slate-400">
                 <MapPin className="w-4 h-4 text-primary-400 flex-shrink-0" />
-                <span className="text-sm">San Francisco, California</span>
+                <span className="text-sm">Anand, Gujarat, India</span>
               </div>
               <div className="flex items-center gap-3 text-slate-400">
                 <Mail className="w-4 h-4 text-primary-400 flex-shrink-0" />
-                <span className="text-sm">hello@traveloop.com</span>
+                <span className="text-sm">[EMAIL_ADDRESS]</span>
               </div>
               <div className="flex items-center gap-3 text-slate-400">
                 <Phone className="w-4 h-4 text-primary-400 flex-shrink-0" />
-                <span className="text-sm">+1 (555) 123-4567</span>
+                <span className="text-sm">+91 9157050101</span>
               </div>
             </div>
           </div>
@@ -150,7 +150,7 @@ const Footer = () => {
         {/* Bottom bar */}
         <div className="mt-12 pt-8 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-slate-500 text-sm">
-            © 2024 Traveloop. All rights reserved.
+            © 2026 Traveloop. All rights reserved.
           </p>
           <p className="text-slate-500 text-sm flex items-center gap-1">
             Made with <Heart className="w-4 h-4 text-red-500 fill-red-500" /> for travelers worldwide
