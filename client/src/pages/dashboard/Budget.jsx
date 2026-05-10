@@ -34,39 +34,13 @@ const Budget = () => {
     }
   };
 
-  const dummyStats = {
-    totalBudget: 15000,
-    totalSpent: 4500
-  };
-  
-  const dummyTrips = [
-    {
-      _id: 'dummy1',
-      title: 'Europe Getaway',
-      budget: { total: 8000, spent: 3200, currency: 'USD' }
-    },
-    {
-      _id: 'dummy2',
-      title: 'Maldives Escape',
-      budget: { total: 5000, spent: 5000, currency: 'USD' }
-    },
-    {
-      _id: 'dummy3',
-      title: 'New Zealand Road Trip',
-      budget: { total: 2000, spent: 300, currency: 'USD' }
-    }
-  ];
-
-  const displayStats = stats.totalBudget ? stats : dummyStats;
-  const displayTrips = trips.length > 0 ? trips : dummyTrips;
-
-  const remaining = (displayStats.totalBudget || 0) - (displayStats.totalSpent || 0);
-  const spentPercent = displayStats.totalBudget ? Math.round((displayStats.totalSpent / displayStats.totalBudget) * 100) : 0;
+  const remaining = (stats.totalBudget || 0) - (stats.totalSpent || 0);
+  const spentPercent = stats.totalBudget ? Math.round((stats.totalSpent / stats.totalBudget) * 100) : 0;
 
   const statCards = [
     {
       label: 'Total Budget',
-      value: `$${(displayStats.totalBudget || 0).toLocaleString()}`,
+      value: `$${(stats.totalBudget || 0).toLocaleString()}`,
       icon: Wallet,
       color: 'from-blue-500 to-cyan-500',
       bgLight: 'bg-blue-50',
@@ -74,7 +48,7 @@ const Budget = () => {
     },
     {
       label: 'Total Spent',
-      value: `$${(displayStats.totalSpent || 0).toLocaleString()}`,
+      value: `$${(stats.totalSpent || 0).toLocaleString()}`,
       icon: ArrowUpRight,
       color: 'from-red-500 to-pink-500',
       bgLight: 'bg-red-50',
@@ -147,9 +121,9 @@ const Budget = () => {
       {/* Per-Trip Budgets */}
       <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
         <h3 className="text-base font-semibold text-slate-900 mb-4">Trip Budgets</h3>
-        {displayTrips.length > 0 ? (
+        {trips.length > 0 ? (
           <div className="space-y-4">
-            {displayTrips.filter(t => t.budget?.total > 0).map(trip => {
+            {trips.filter(t => t.budget?.total > 0).map(trip => {
               const spent = trip.budget?.spent || 0;
               const total = trip.budget?.total || 1;
               const pct = Math.round((spent / total) * 100);
@@ -160,7 +134,7 @@ const Budget = () => {
                       {trip.title}
                     </Link>
                     <span className="text-xs text-slate-500">
-                      ${spent.toLocaleString()} / ${total.toLocaleString()} {trip.budget?.currency}
+                      ${spent.toLocaleString()} / ${total.toLocaleString()} {trip.budget?.currency || 'USD'}
                     </span>
                   </div>
                   <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
@@ -172,7 +146,7 @@ const Budget = () => {
                 </div>
               );
             })}
-            {displayTrips.filter(t => t.budget?.total > 0).length === 0 && (
+            {trips.filter(t => t.budget?.total > 0).length === 0 && (
               <p className="text-sm text-slate-400 text-center py-4">No trips with budgets set</p>
             )}
           </div>

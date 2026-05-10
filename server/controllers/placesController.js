@@ -9,6 +9,7 @@
 // ==========================================
 
 const axios = require('axios');
+const Destination = require('../models/Destination');
 
 const OTM_KEY = process.env.OPENTRIPMAP_API_KEY;
 const OTM_BASE = 'https://api.opentripmap.com/0.1';
@@ -303,13 +304,46 @@ exports.batchDetails = async (req, res) => {
 };
 
 // ==========================================
-// KEEP: Original suggestion endpoint (curated)
+// Suggestion endpoint (Dynamic from DB)
 // GET /api/places/suggestions?category=Popular
 // ==========================================
 exports.getSuggestions = async (req, res) => {
   try {
     const { category = 'Popular' } = req.query;
-    res.json({ success: true, results: getCuratedSuggestions(category) });
+    
+    // Convert to case-insensitive search or tag search
+    let dbQuery = {};
+    const catLower = category.toLowerCase();
+    
+    if (catLower === 'popular') {
+      dbQuery = { category: 'popular' };
+    } else if (catLower === 'beaches') {
+      dbQuery = { tags: { $in: ['beach', 'beaches', 'island'] } };
+    } else if (catLower === 'mountains') {
+      dbQuery = { tags: { $in: ['mountains', 'hiking', 'nature'] } };
+    } else if (catLower === 'heritage') {
+      dbQuery = { tags: { $in: ['history', 'culture', 'temples'] } };
+    } else {
+      // Fallback: search by tags or name
+      dbQuery = { $or: [{ tags: catLower }, { category: catLower }] };
+    }
+
+    let destinations = await Destination.find(dbQuery).sort('-rating').limit(8);
+    
+    // If not enough results, just get top rated
+    if (destinations.length === 0) {
+      destinations = await Destination.find({}).sort('-rating').limit(8);
+    }
+
+    const results = destinations.map(d => ({
+      name: d.name,
+      country: d.country,
+      rating: d.rating,
+      tags: d.tags,
+      image: d.image
+    }));
+
+    res.json({ success: true, results });
   } catch (error) {
     console.error('Suggestions error:', error.message);
     res.json({ success: true, results: [] });
@@ -349,40 +383,45 @@ function getFallbackGeoname(name) {
 
 function getFallbackPlaces(query) {
   const q = (query || '').toLowerCase();
+  
+  const cityImages = {
+    dubai: [
+      'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=400&q=80', // burj
+      'https://images.unsplash.com/photo-1582672060624-cb83e580eec9?w=400&q=80', // skyline
+      'https://images.unsplash.com/photo-1526495124232-a04e1849168c?w=400&q=80', // palm
+      'https://images.unsplash.com/photo-1546412414-8035e1776c92?w=400&q=80', // desert
+      'https://images.unsplash.com/photo-1608159473859-0097780f2eb1?w=400&q=80', // mall
+      'https://images.unsplash.com/photo-1541905389647-75e9275b2ce0?w=400&q=80'  // marina
+    ],
+    paris: [
+      'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400&q=80',
+      'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=400&q=80',
+      'https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?w=400&q=80',
+      'https://images.unsplash.com/photo-1431274172761-fca41d930114?w=400&q=80'
+    ]
+  };
+
+  const defaultImages = [
+    'https://images.unsplash.com/photo-1488646953014-c8cb1968032f?w=400&q=80',
+    'https://images.unsplash.com/photo-1503614472-8c93d56e92ce?w=400&q=80',
+    'https://images.unsplash.com/photo-1533105079780-92b9be482077?w=400&q=80',
+    'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=400&q=80',
+    'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=80',
+    'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=400&q=80'
+  ];
+
+  const images = cityImages[q] || defaultImages;
+
   const places = [
-    { xid: 'fb1', name: 'Walking Tour',     kinds: 'interesting_places,cultural', rate: 3, distance: 500, lat: 0, lon: 0 },
-    { xid: 'fb2', name: 'Historic Museum',   kinds: 'museums,cultural',            rate: 3, distance: 1200, lat: 0, lon: 0 },
-    { xid: 'fb3', name: 'City Park',         kinds: 'natural,parks',               rate: 2, distance: 800, lat: 0, lon: 0 },
-    { xid: 'fb4', name: 'Famous Cathedral',  kinds: 'religion,architecture',       rate: 3, distance: 1500, lat: 0, lon: 0 },
-    { xid: 'fb5', name: 'Local Market',      kinds: 'shops,foods',                 rate: 2, distance: 350, lat: 0, lon: 0 },
-    { xid: 'fb6', name: 'Tower Viewpoint',   kinds: 'architecture,towers',         rate: 3, distance: 2100, lat: 0, lon: 0 },
-    { xid: 'fb7', name: 'Adventure Sports',  kinds: 'sport,amusements',            rate: 2, distance: 3000, lat: 0, lon: 0 },
-    { xid: 'fb8', name: 'Botanical Garden',  kinds: 'gardens,natural',             rate: 2, distance: 1800, lat: 0, lon: 0 },
+    { xid: 'fb1', name: 'Walking Tour',     kinds: 'interesting_places,cultural', rate: 3, distance: 500, lat: 0, lon: 0, image: images[0 % images.length] },
+    { xid: 'fb2', name: 'Historic Museum',   kinds: 'museums,cultural',            rate: 3, distance: 1200, lat: 0, lon: 0, image: images[1 % images.length] },
+    { xid: 'fb3', name: 'City Park',         kinds: 'natural,parks',               rate: 2, distance: 800, lat: 0, lon: 0, image: images[2 % images.length] },
+    { xid: 'fb4', name: 'Famous Cathedral',  kinds: 'religion,architecture',       rate: 3, distance: 1500, lat: 0, lon: 0, image: images[3 % images.length] },
+    { xid: 'fb5', name: 'Local Market',      kinds: 'shops,foods',                 rate: 2, distance: 350, lat: 0, lon: 0, image: images[4 % images.length] },
+    { xid: 'fb6', name: 'Tower Viewpoint',   kinds: 'architecture,towers',         rate: 3, distance: 2100, lat: 0, lon: 0, image: images[5 % images.length] },
+    { xid: 'fb7', name: 'Adventure Sports',  kinds: 'sport,amusements',            rate: 2, distance: 3000, lat: 0, lon: 0, image: images[0 % images.length] },
+    { xid: 'fb8', name: 'Botanical Garden',  kinds: 'gardens,natural',             rate: 2, distance: 1800, lat: 0, lon: 0, image: images[1 % images.length] },
   ];
   if (q) return places.map(p => ({ ...p, name: `${q.charAt(0).toUpperCase() + q.slice(1)} ${p.name}` }));
   return places;
-}
-
-function getCuratedSuggestions(category) {
-  const suggestions = {
-    Popular: [
-      { name: 'Krabi', country: 'Thailand', rating: 4.8, tags: ['Beaches', 'Island', 'Nature'], image: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=400&q=80' },
-      { name: 'Tokyo', country: 'Japan', rating: 4.7, tags: ['Culture', 'City Life', 'Food'], image: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=400&q=80' },
-      { name: 'Interlaken', country: 'Switzerland', rating: 4.6, tags: ['Mountains', 'Adventure', 'Nature'], image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=80' },
-      { name: 'Santorini', country: 'Greece', rating: 4.8, tags: ['Beach', 'Views', 'Romance'], image: 'https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?w=400&q=80' },
-      { name: 'New York', country: 'USA', rating: 4.6, tags: ['City Life', 'Shopping', 'Culture'], image: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=400&q=80' },
-      { name: 'Dubai', country: 'UAE', rating: 4.6, tags: ['Luxury', 'City Life', 'Adventure'], image: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=400&q=80' },
-    ],
-    Beaches: [
-      { name: 'Krabi', country: 'Thailand', rating: 4.8, tags: ['Beaches', 'Island'], image: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=400&q=80' },
-      { name: 'Maldives', country: 'Maldives', rating: 4.9, tags: ['Beach', 'Luxury'], image: 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=400&q=80' },
-      { name: 'Bali', country: 'Indonesia', rating: 4.7, tags: ['Beach', 'Culture'], image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=400&q=80' },
-    ],
-    Mountains: [
-      { name: 'Interlaken', country: 'Switzerland', rating: 4.6, tags: ['Mountains', 'Adventure'], image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=80' },
-      { name: 'Banff', country: 'Canada', rating: 4.7, tags: ['Mountains', 'Lakes'], image: 'https://images.unsplash.com/photo-1503614472-8c93d56e92ce?w=400&q=80' },
-      { name: 'Manali', country: 'India', rating: 4.5, tags: ['Mountains', 'Trekking'], image: 'https://images.unsplash.com/photo-1626621331169-5f34be280ed9?w=400&q=80' },
-    ],
-  };
-  return suggestions[category] || suggestions.Popular;
 }
