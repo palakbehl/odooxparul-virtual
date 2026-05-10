@@ -10,7 +10,11 @@ const {
   getAllUsers,
   getAllTrips,
   deleteUser,
-  updateUserRole
+  updateUserRole,
+  getPopularActivities,
+  getAnalytics,
+  getBudgetOverview,
+  getChecklistOverview
 } = require('../controllers/adminController');
 
 // Admin middleware - checks role after auth
@@ -29,5 +33,9 @@ router.get('/users', getAllUsers);
 router.get('/trips', getAllTrips);
 router.delete('/users/:id', deleteUser);
 router.put('/users/:id/role', updateUserRole);
+router.get('/activities', getPopularActivities);
+router.get('/analytics', getAnalytics);
+router.get('/budget', getBudgetOverview);
+router.get('/checklist', getChecklistOverview);
 
 module.exports = router;

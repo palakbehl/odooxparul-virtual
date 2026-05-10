@@ -25,6 +25,10 @@ import Notes from './pages/dashboard/Notes';
 import Profile from './pages/dashboard/Profile';
 import AdminHome from './pages/admin/AdminHome';
 import ManageUsers from './pages/admin/ManageUsers';
+import AdminActivities from './pages/admin/AdminActivities';
+import AdminAnalytics from './pages/admin/AdminAnalytics';
+import AdminBudget from './pages/admin/AdminBudget';
+import AdminChecklist from './pages/admin/AdminChecklist';
 
 function App() {
   return (
@@ -67,10 +71,10 @@ function App() {
           }>
             <Route index element={<AdminHome />} />
             <Route path="users" element={<ManageUsers />} />
-            <Route path="activities" element={<Discover />} />
-            <Route path="analytics" element={<AdminHome />} />
-            <Route path="budget" element={<Budget />} />
-            <Route path="checklist" element={<Checklist />} />
+            <Route path="activities" element={<AdminActivities />} />
+            <Route path="analytics" element={<AdminAnalytics />} />
+            <Route path="budget" element={<AdminBudget />} />
+            <Route path="checklist" element={<AdminChecklist />} />
             <Route path="profile" element={<Profile />} />
           </Route>
         </Routes>
