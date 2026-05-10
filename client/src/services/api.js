@@ -62,4 +62,21 @@ export const destinationAPI = {
   seed: () => API.post('/destinations/seed'),
 };
 
+// Itinerary API calls
+export const itineraryAPI = {
+  add: (data) => API.post('/itinerary/add', data),
+  getByTrip: (tripId) => API.get(`/itinerary/trip/${tripId}`),
+  update: (id, data) => API.put(`/itinerary/update/${id}`, data),
+  delete: (id) => API.delete(`/itinerary/delete/${id}`),
+  reorder: (data) => API.put('/itinerary/reorder', data),
+};
+
+// Places API calls (Outscraper proxy)
+export const placesAPI = {
+  search: (q) => API.get('/places/search', { params: { q } }),
+  attractions: (destination, category) => API.get('/places/attractions', { params: { destination, category } }),
+  suggestions: (category) => API.get('/places/suggestions', { params: { category } }),
+};
+
 export default API;
+

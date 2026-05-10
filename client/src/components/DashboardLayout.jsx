@@ -131,47 +131,8 @@ const DashboardLayout = () => {
           </div>
         </nav>
 
-        {/* Sidebar Footer */}
-        <div className="px-3 pb-4 space-y-3">
-          {/* Get the app */}
-          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-            <p className="text-[13px] font-bold text-slate-800 mb-1">Plan on the go</p>
-            <p className="text-[11.5px] text-slate-500 mb-3 leading-relaxed">Get the Traveloop app for your mobile device.</p>
-            <div className="flex gap-2">
-              <button className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors">
-                <Apple className="w-3.5 h-3.5" />
-                <div className="flex flex-col items-start leading-none">
-                  <span className="text-[8px] opacity-80">Download on the</span>
-                  <span className="text-[10px] font-semibold">App Store</span>
-                </div>
-              </button>
-              <button className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors">
-                <Smartphone className="w-3.5 h-3.5" />
-                <div className="flex flex-col items-start leading-none">
-                  <span className="text-[8px] opacity-80">GET IT ON</span>
-                  <span className="text-[10px] font-semibold">Google Play</span>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          {/* Need help */}
-          <div className="bg-gradient-to-br from-primary-50 to-accent-50 rounded-2xl p-4 border border-primary-100/50">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary-600 to-accent-600 rounded-xl flex items-center justify-center mb-3 shadow-md shadow-primary-600/20">
-              <Compass className="w-5 h-5 text-white" />
-            </div>
-            <p className="text-[13px] font-bold text-slate-800 mb-1">Need help?</p>
-            <p className="text-[11.5px] text-slate-500 mb-3 leading-relaxed">Check our guides and FAQs</p>
-            <div className="space-y-2">
-              <button className="w-full py-2 bg-white text-primary-600 rounded-lg text-xs font-semibold border border-primary-100 hover:bg-primary-50 transition-colors shadow-sm">
-                Support Center
-              </button>
-              <button className="w-full py-2 bg-transparent text-slate-600 rounded-lg text-xs font-semibold hover:bg-white/60 transition-colors">
-                Help & FAQs
-              </button>
-            </div>
-          </div>
-        </div>
+        {/* Sidebar Footer spacer */}
+        <div className="px-3 pb-4" />
       </aside>
 
       {/* ===== MAIN CONTENT ===== */}

@@ -45,6 +45,14 @@ const tripSchema = new mongoose.Schema({
     spent: { type: Number, default: 0 },
     currency: { type: String, default: 'USD' }
   },
+  travelerCount: {
+    type: Number,
+    default: 1
+  },
+  tripType: {
+    type: String,
+    default: ''
+  },
   status: {
     type: String,
     enum: ['draft', 'upcoming', 'active', 'completed', 'cancelled'],

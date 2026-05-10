@@ -39,6 +39,7 @@ function App() {
             <Route path="trips/new" element={<CreateTrip />} />
             <Route path="trips/:id" element={<MyTrips />} />
             <Route path="itinerary" element={<Itinerary />} />
+            <Route path="itinerary/:tripId" element={<Itinerary />} />
             <Route path="discover" element={<Discover />} />
             <Route path="budget" element={<Budget />} />
             <Route path="checklist" element={<Checklist />} />

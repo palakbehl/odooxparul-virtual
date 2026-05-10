@@ -11,6 +11,8 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const tripRoutes = require('./routes/trips');
 const destinationRoutes = require('./routes/destinations');
+const itineraryRoutes = require('./routes/itinerary');
+const placesRoutes = require('./routes/places');
 
 const app = express();
 
@@ -33,6 +35,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/trips', tripRoutes);
 app.use('/api/destinations', destinationRoutes);
+app.use('/api/itinerary', itineraryRoutes);
+app.use('/api/places', placesRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
