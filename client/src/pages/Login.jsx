@@ -4,12 +4,13 @@
 // ==========================================
 
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, Eye, EyeOff, Plane, LogIn, ArrowLeft, Loader2 } from 'lucide-react';
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, isAuthenticated, loading: authLoading } = useAuth();
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
@@ -17,12 +18,14 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const returnTo = location.state?.returnTo;
+
   // Redirect if already logged in
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      navigate('/dashboard', { replace: true });
+      navigate(returnTo || '/dashboard', { replace: true });
     }
-  }, [isAuthenticated, authLoading, navigate]);
+  }, [isAuthenticated, authLoading, navigate, returnTo]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -40,7 +43,9 @@ const Login = () => {
     try {
       const data = await login(formData);
       // Role-based redirect
-      if (data?.user?.role === 'admin') {
+      if (returnTo) {
+        navigate(returnTo, { replace: true });
+      } else if (data?.user?.role === 'admin') {
         navigate('/admin', { replace: true });
       } else {
         navigate('/dashboard', { replace: true });

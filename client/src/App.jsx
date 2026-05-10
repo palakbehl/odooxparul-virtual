@@ -7,6 +7,7 @@ import AdminLayout from './components/AdminLayout';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import SharedTrip from './pages/public/SharedTrip';
 
 // User Dashboard Pages
 import DashboardHome from './pages/dashboard/DashboardHome';
@@ -46,6 +47,7 @@ function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/shared-trip/:shareId" element={<SharedTrip />} />
 
           {/* User Dashboard */}
           <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>

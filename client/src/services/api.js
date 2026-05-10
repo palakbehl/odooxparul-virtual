@@ -162,4 +162,14 @@ export const noteAPI = {
   delete: (id) => API.delete(`/notes/${id}`),
 };
 
+// Shared Trip API calls
+export const sharedTripAPI = {
+  generateLink: (tripId) => API.post(`/shared-trip/generate/${tripId}`),
+  get: (shareId) => API.get(`/shared-trip/${shareId}`),
+  copy: (shareId) => API.post(`/shared-trip/${shareId}/copy`),
+  save: (shareId) => API.post(`/shared-trip/${shareId}/save`),
+  like: (shareId) => API.post(`/shared-trip/${shareId}/like`),
+  view: (shareId) => API.post(`/shared-trip/${shareId}/view`),
+};
+
 export default API;
