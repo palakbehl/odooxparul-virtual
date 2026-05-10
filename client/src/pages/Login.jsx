@@ -3,18 +3,26 @@
 // Inspired by reference Screen 1
 // ==========================================
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { authAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, Eye, EyeOff, Plane, LogIn, ArrowLeft, Loader2 } from 'lucide-react';
 
 const Login = () => {
   const navigate = useNavigate();
+  const { login, isAuthenticated, loading: authLoading } = useAuth();
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, authLoading, navigate]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -30,12 +38,8 @@ const Login = () => {
     setLoading(true);
     setError('');
     try {
-      const { data } = await authAPI.login(formData);
-      if (data.success) {
-        localStorage.setItem('traveloop_token', data.token);
-        localStorage.setItem('traveloop_user', JSON.stringify(data.user));
-        navigate('/');
-      }
+      await login(formData);
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please try again.');
     } finally {

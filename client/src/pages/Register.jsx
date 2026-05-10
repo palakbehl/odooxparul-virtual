@@ -3,9 +3,9 @@
 // Inspired by reference Screen 2
 // ==========================================
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { authAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import {
   User, Mail, Lock, Eye, EyeOff, Phone, MapPin, Globe, FileText,
   Camera, Plane, UserPlus, ArrowLeft, Loader2, CheckCircle, AlertCircle
@@ -19,8 +19,35 @@ const COUNTRIES = [
   'Portugal', 'Ireland', 'Philippines', 'Vietnam', 'Turkey', 'Other'
 ];
 
+// Extracted outside Register to avoid re-creation on every render (fixes onChange focus loss)
+const InputField = ({ icon: Icon, label, name, type, placeholder, half, value, onChange, error, showToggle, onToggle, toggleState }) => (
+  <div className={half ? '' : 'col-span-2'}>
+    <label className="block text-sm font-semibold text-slate-700 mb-1.5">{label}</label>
+    <div className="relative">
+      <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
+      <input
+        id={`register-${name}`}
+        type={type === 'password' ? (toggleState ? 'text' : 'password') : (type || 'text')}
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className={`w-full pl-11 pr-${type === 'password' ? '11' : '4'} py-3 bg-white border ${error ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-slate-200 focus:border-primary-500 focus:ring-primary-500/10'} rounded-xl text-slate-900 placeholder-slate-400 focus:ring-4 transition-all text-sm`}
+      />
+      {type === 'password' && (
+        <button type="button" onClick={onToggle}
+          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+          {toggleState ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
+        </button>
+      )}
+    </div>
+    {error && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{error}</p>}
+  </div>
+);
+
 const Register = () => {
   const navigate = useNavigate();
+  const { register, isAuthenticated, loading: authLoading } = useAuth();
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', email: '', phone: '',
     city: '', country: '', bio: '', password: '', confirmPassword: ''
@@ -33,9 +60,17 @@ const Register = () => {
   const [error, setError] = useState('');
   const [errors, setErrors] = useState({});
 
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, authLoading, navigate]);
+
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-    setErrors({ ...errors, [e.target.name]: '' });
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    setErrors(prev => ({ ...prev, [name]: '' }));
     setError('');
   };
 
@@ -76,43 +111,14 @@ const Register = () => {
     try {
       const payload = { ...formData, profileImage: profileImage || '' };
       delete payload.confirmPassword;
-      const { data } = await authAPI.register(payload);
-      if (data.success) {
-        localStorage.setItem('traveloop_token', data.token);
-        localStorage.setItem('traveloop_user', JSON.stringify(data.user));
-        navigate('/');
-      }
+      await register(payload);
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
-
-  const InputField = ({ icon: Icon, label, name, type = 'text', placeholder, half = false, required = false }) => (
-    <div className={half ? '' : 'col-span-2'}>
-      <label className="block text-sm font-semibold text-slate-700 mb-1.5">{label}</label>
-      <div className="relative">
-        <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
-        <input
-          id={`register-${name}`}
-          type={type === 'password' ? ((name === 'password' ? showPassword : showConfirm) ? 'text' : 'password') : type}
-          name={name}
-          value={formData[name]}
-          onChange={handleChange}
-          placeholder={placeholder}
-          className={`w-full pl-11 pr-${type === 'password' ? '11' : '4'} py-3 bg-white border ${errors[name] ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-slate-200 focus:border-primary-500 focus:ring-primary-500/10'} rounded-xl text-slate-900 placeholder-slate-400 focus:ring-4 transition-all text-sm`}
-        />
-        {type === 'password' && (
-          <button type="button" onClick={() => name === 'password' ? setShowPassword(!showPassword) : setShowConfirm(!showConfirm)}
-            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
-            {(name === 'password' ? showPassword : showConfirm) ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
-          </button>
-        )}
-      </div>
-      {errors[name] && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors[name]}</p>}
-    </div>
-  );
 
   return (
     <div className="min-h-screen flex">
@@ -188,9 +194,9 @@ const Register = () => {
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-2 gap-4">
-              <InputField icon={User} label="First Name" name="firstName" placeholder="First Name" half required />
-              <InputField icon={User} label="Last Name" name="lastName" placeholder="Last Name" half required />
-              <InputField icon={Mail} label="Email Address" name="email" type="email" placeholder="you@example.com" required />
+              <InputField icon={User} label="First Name" name="firstName" placeholder="First Name" half value={formData.firstName} onChange={handleChange} error={errors.firstName} />
+              <InputField icon={User} label="Last Name" name="lastName" placeholder="Last Name" half value={formData.lastName} onChange={handleChange} error={errors.lastName} />
+              <InputField icon={Mail} label="Email Address" name="email" type="email" placeholder="you@example.com" value={formData.email} onChange={handleChange} error={errors.email} />
 
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">Phone Number</label>
@@ -227,8 +233,8 @@ const Register = () => {
                 </div>
               </div>
 
-              <InputField icon={Lock} label="Password" name="password" type="password" placeholder="Min 6 characters" half required />
-              <InputField icon={Lock} label="Confirm Password" name="confirmPassword" type="password" placeholder="Confirm password" half required />
+              <InputField icon={Lock} label="Password" name="password" type="password" placeholder="Min 6 characters" half value={formData.password} onChange={handleChange} error={errors.password} toggleState={showPassword} onToggle={() => setShowPassword(!showPassword)} />
+              <InputField icon={Lock} label="Confirm Password" name="confirmPassword" type="password" placeholder="Confirm password" half value={formData.confirmPassword} onChange={handleChange} error={errors.confirmPassword} toggleState={showConfirm} onToggle={() => setShowConfirm(!showConfirm)} />
 
               {/* Bio */}
               <div className="col-span-2">
