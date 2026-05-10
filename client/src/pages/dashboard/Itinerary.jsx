@@ -1,4 +1,4 @@
-import{useState,useEffect}from'react';import{Link,useSearchParams}from'react-router-dom';import{tripAPI,itineraryAPI}from'../../services/api';import{CalendarDays,Plus,MapPin,Loader2,Pencil,MoreHorizontal,Trash2,ArrowLeft,ArrowRight,ChevronRight,Eye,Users,Globe,GripVertical,X,DollarSign,Info,Landmark}from'lucide-react';
+import{useState,useEffect,useRef}from'react';import{Link,useSearchParams}from'react-router-dom';import{tripAPI,itineraryAPI,placesAPI}from'../../services/api';import{CalendarDays,Plus,MapPin,Loader2,Pencil,MoreHorizontal,Trash2,ArrowLeft,ArrowRight,ChevronRight,Eye,Users,Globe,GripVertical,X,DollarSign,Info,Landmark}from'lucide-react';
 
 const Itinerary=()=>{
 const[searchParams]=useSearchParams();
@@ -15,6 +15,27 @@ const[saving,setSaving]=useState(false);
 const[totalCost,setTotalCost]=useState(0);
 const[showSummary,setShowSummary]=useState(false);
 const[sectionForm,setSectionForm]=useState({cityName:'',country:'',description:'',startDate:'',endDate:'',estimatedCost:'',coverImage:'',notes:''});
+
+const[destResults,setDestResults]=useState([]);
+const[destLoading,setDestLoading]=useState(false);
+const[showDestDropdown,setShowDestDropdown]=useState(false);
+const destRef=useRef(null);
+const searchTimeout=useRef(null);
+
+useEffect(()=>{
+  const handler=(e)=>{if(destRef.current&&!destRef.current.contains(e.target))setShowDestDropdown(false);};
+  document.addEventListener('mousedown',handler);return()=>document.removeEventListener('mousedown',handler);
+},[]);
+
+const handleDestSearch=(val)=>{
+  setSectionForm({...sectionForm,cityName:val});
+  if(searchTimeout.current)clearTimeout(searchTimeout.current);
+  if(val.length<2){setDestResults([]);setShowDestDropdown(false);return;}
+  setDestLoading(true);
+  searchTimeout.current=setTimeout(async()=>{
+    try{const{data}=await placesAPI.autosuggest(val,{limit:5});if(data.success){setDestResults(data.results.map(r=>({name:r.name,country:r.kinds?r.kinds.split(',')[0].replace(/_/g,' '):''})));setShowDestDropdown(true);}}catch(e){}finally{setDestLoading(false);}
+  },400);
+};
 
 const covers=['https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=300&q=80','https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=300&q=80','https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?w=300&q=80','https://images.unsplash.com/photo-1583422409516-2895a77efded?w=300&q=80','https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=300&q=80','https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=300&q=80'];
 
@@ -136,8 +157,8 @@ return(
 <div className="flex items-center justify-between p-5 border-b border-slate-100"><h3 className="text-lg font-bold text-slate-900">{editSection?'Edit Section':'Add New Section'}</h3><button onClick={()=>{setShowAddModal(false);setEditSection(null);}} className="p-1.5 rounded-lg hover:bg-slate-100"><X className="w-5 h-5 text-slate-400"/></button></div>
 <div className="p-5 space-y-4">
 <div className="grid grid-cols-2 gap-4">
-<div><label className="block text-sm font-semibold text-slate-700 mb-1">City Name *</label><input value={sectionForm.cityName} onChange={e=>setSectionForm({...sectionForm,cityName:e.target.value})} placeholder="e.g., Paris" className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-primary-400 focus:ring-2 focus:ring-primary-100"/></div>
-<div><label className="block text-sm font-semibold text-slate-700 mb-1">Country</label><input value={sectionForm.country} onChange={e=>setSectionForm({...sectionForm,country:e.target.value})} placeholder="e.g., France" className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-primary-400 focus:ring-2 focus:ring-primary-100"/></div>
+<div ref={destRef} className="relative"><label className="block text-sm font-semibold text-slate-700 mb-1">City Name *</label><div className="relative"><input value={sectionForm.cityName} onChange={e=>handleDestSearch(e.target.value)} onFocus={()=>destResults.length>0&&setShowDestDropdown(true)} placeholder="e.g., Paris" className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-primary-400 focus:ring-2 focus:ring-primary-100"/>{destLoading&&<Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary-500 animate-spin"/>}</div>{showDestDropdown&&destResults.length>0&&(<div className="absolute z-50 top-full mt-1 w-full bg-white rounded-xl border border-slate-200 shadow-xl max-h-48 overflow-y-auto">{destResults.map((r,i)=><button key={i} type="button" onClick={()=>{setSectionForm({...sectionForm,cityName:r.name,country:r.country});setShowDestDropdown(false);}} className="w-full flex flex-col px-4 py-2 hover:bg-primary-50 text-left"><span className="text-sm font-medium text-slate-800">{r.name}</span><span className="text-xs text-slate-400">{r.country}</span></button>)}</div>)}</div>
+<div><label className="block text-sm font-semibold text-slate-700 mb-1">Category / Country</label><input value={sectionForm.country} onChange={e=>setSectionForm({...sectionForm,country:e.target.value})} placeholder="e.g., France" className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-primary-400 focus:ring-2 focus:ring-primary-100"/></div>
 </div>
 <div><label className="block text-sm font-semibold text-slate-700 mb-1">Description</label><textarea value={sectionForm.description} onChange={e=>setSectionForm({...sectionForm,description:e.target.value})} placeholder="Describe this stop..." rows={2} className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-primary-400 focus:ring-2 focus:ring-primary-100 resize-none"/></div>
 <div className="grid grid-cols-2 gap-4">

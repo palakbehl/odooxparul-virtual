@@ -71,10 +71,14 @@ export const itineraryAPI = {
   reorder: (data) => API.put('/itinerary/reorder', data),
 };
 
-// Places API calls (Outscraper proxy)
+// Places API calls (OpenTripMap)
 export const placesAPI = {
-  search: (q) => API.get('/places/search', { params: { q } }),
-  attractions: (destination, category) => API.get('/places/attractions', { params: { destination, category } }),
+  search: (q, params = {}) => API.get('/places/search', { params: { q, ...params } }),
+  geoname: (name) => API.get('/places/geoname', { params: { name } }),
+  radius: (lat, lon, params = {}) => API.get('/places/radius', { params: { lat, lon, ...params } }),
+  autosuggest: (name, params = {}) => API.get('/places/autosuggest', { params: { name, ...params } }),
+  details: (xid) => API.get(`/places/details/${xid}`),
+  batchDetails: (xids) => API.post('/places/batch-details', { xids }),
   suggestions: (category) => API.get('/places/suggestions', { params: { category } }),
 };
 

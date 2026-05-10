@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { tripAPI, destinationAPI } from '../../services/api';
+import { tripAPI, placesAPI } from '../../services/api';
 import {
   Search, Globe, ChevronRight, MapPin, Calendar, Users, Star,
   Flame, TrendingUp, Filter, ArrowDownUp, LayoutGrid,
@@ -30,7 +30,7 @@ const DashboardHome = () => {
     try {
       const [dashRes, destRes] = await Promise.all([
         tripAPI.getDashboardStats().catch(() => ({ data: { stats: null, recentTrips: [] } })),
-        destinationAPI.getAll({ limit: 10 }).catch(() => ({ data: { destinations: [] } }))
+        placesAPI.suggestions('Popular').catch(() => ({ data: { results: [] } }))
       ]);
 
       if (dashRes.data.success) {
@@ -39,12 +39,7 @@ const DashboardHome = () => {
       }
 
       if (destRes.data.success) {
-        setDestinations(destRes.data.destinations || []);
-      } else {
-        // Try seeding destinations
-        await destinationAPI.seed();
-        const retry = await destinationAPI.getAll({ limit: 10 });
-        if (retry.data.success) setDestinations(retry.data.destinations || []);
+        setDestinations(destRes.data.results || []);
       }
     } catch (err) {
       console.error('Dashboard load error:', err);
@@ -215,15 +210,17 @@ const DashboardHome = () => {
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {(destinations.length > 0 ? destinations.slice(0, 5) : [
-            { name: 'Santorini', country: 'Greece', category: 'popular' },
-            { name: 'Krabi', country: 'Thailand', category: 'popular' },
-            { name: 'Tokyo', country: 'Japan', category: 'trending' },
-            { name: 'Banff', country: 'Canada', category: 'popular' },
-            { name: 'Cartagena', country: 'Colombia', category: 'trending' },
-          ]).map((dest, i) => (
+            { name: 'Santorini', country: 'Greece', tags: ['popular'] },
+            { name: 'Krabi', country: 'Thailand', tags: ['popular'] },
+            { name: 'Tokyo', country: 'Japan', tags: ['trending'] },
+            { name: 'Banff', country: 'Canada', tags: ['popular'] },
+            { name: 'Cartagena', country: 'Colombia', tags: ['trending'] },
+          ]).map((dest, i) => {
+            const isTrending = dest.tags && dest.tags.includes('trending');
+            return (
             <Link
-              key={dest._id || i}
-              to={dest._id ? `/dashboard/discover?search=${dest.name}` : '/dashboard/discover'}
+              key={dest.name || i}
+              to={`/dashboard/discover?search=${dest.name}`}
               className="group"
             >
               <div className="relative rounded-2xl overflow-hidden aspect-[4/5] mb-3">
@@ -237,18 +234,18 @@ const DashboardHome = () => {
               <h3 className="text-sm font-bold text-slate-900">{dest.name}</h3>
               <p className="text-xs text-slate-500">{dest.country}</p>
               <span className={`inline-flex items-center gap-1 mt-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                dest.category === 'trending'
+                isTrending
                   ? 'bg-orange-100 text-orange-700'
                   : 'bg-blue-100 text-blue-700'
               }`}>
-                {dest.category === 'trending' ? (
+                {isTrending ? (
                   <><Flame className="w-3 h-3" />Trending</>
                 ) : (
                   <><Star className="w-3 h-3" />Popular</>
                 )}
               </span>
             </Link>
-          ))}
+          )})}
         </div>
       </section>
 

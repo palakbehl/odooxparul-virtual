@@ -15,12 +15,12 @@ import {
 const TRIP_TYPES = ['Leisure', 'Adventure', 'Family', 'Solo', 'Business', 'Luxury', 'Backpacking'];
 const TRAVELER_OPTIONS = ['1 Traveler', '2 Travelers', '3 Travelers', '4 Travelers', '5 Travelers', '6+ Travelers'];
 const CATEGORIES = [
-  { name: 'Popular', icon: Sparkles, query: 'tourist attractions' },
-  { name: 'Beaches', icon: Palmtree, query: 'beaches' },
-  { name: 'Mountains', icon: Mountain, query: 'mountains hiking' },
-  { name: 'Heritage', icon: Landmark, query: 'heritage monuments' },
-  { name: 'Adventure', icon: Compass, query: 'adventure activities' },
-  { name: 'Food & Culture', icon: UtensilsCrossed, query: 'restaurants food' },
+  { name: 'Popular', icon: Sparkles, query: 'interesting_places' },
+  { name: 'Beaches', icon: Palmtree, query: 'beaches,natural' },
+  { name: 'Mountains', icon: Mountain, query: 'mountains,natural' },
+  { name: 'Heritage', icon: Landmark, query: 'historic,cultural' },
+  { name: 'Adventure', icon: Compass, query: 'sport,amusements' },
+  { name: 'Food & Culture', icon: UtensilsCrossed, query: 'foods,shops' },
 ];
 
 const CreateTrip = () => {
@@ -76,20 +76,33 @@ const CreateTrip = () => {
     try {
       const destination = selectedDest?.name || destQuery;
       if (destination && destination.length >= 2) {
-        // Fetch place-specific attractions
+        // Fetch place-specific attractions via OpenTripMap API
         const catObj = CATEGORIES.find(c => c.name === category);
-        const query = catObj?.query || 'tourist attractions';
-        const { data } = await placesAPI.attractions(destination, query);
-        if (data.success) {
-          setSuggestions(data.results.map(r => ({
+        const kinds = catObj?.query || 'interesting_places';
+        const { data } = await placesAPI.search(destination, { kinds, limit: 8 });
+        
+        if (data.success && data.results) {
+          const initialMap = data.results.map(r => ({
             name: r.name,
-            country: r.address || destination,
-            rating: r.rating,
-            tags: [r.category || category].filter(Boolean),
-            image: r.image || '',
-            reviews: r.reviews,
-            estimatedPrice: r.estimatedPrice
-          })));
+            country: destination,
+            rating: (r.rate * 1.6 + 0.2).toFixed(1), // OTM rate 1-3 to 1-5 scale
+            tags: [r.kinds ? r.kinds.split(',')[0].replace(/_/g, ' ') : category],
+            image: `https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400&q=80`,
+            xid: r.xid
+          }));
+          setSuggestions(initialMap);
+
+          // Background fetch to get images
+          const xids = data.results.map(r => r.xid).filter(Boolean);
+          if (xids.length > 0) {
+            placesAPI.batchDetails(xids).then(res => {
+              if (res.data.success) {
+                const imgMap = {};
+                res.data.results.forEach(d => { if(d.image) imgMap[d.xid] = d.image; });
+                setSuggestions(prev => prev.map(p => imgMap[p.xid] ? { ...p, image: imgMap[p.xid] } : p));
+              }
+            }).catch(e => console.warn('Background image fetch failed', e));
+          }
         }
       } else {
         // No destination selected — show curated suggestions
@@ -98,7 +111,6 @@ const CreateTrip = () => {
       }
     } catch (err) {
       console.error('Suggestions error:', err);
-      // Fallback to curated
       try {
         const { data } = await placesAPI.suggestions(activeCategory);
         if (data.success) setSuggestions(data.results);
@@ -124,9 +136,13 @@ const CreateTrip = () => {
     setDestLoading(true);
     searchTimeout.current = setTimeout(async () => {
       try {
-        const { data } = await placesAPI.search(value);
+        const { data } = await placesAPI.autosuggest(value, { limit: 5 });
         if (data.success) {
-          setDestResults(data.results);
+          setDestResults(data.results.map(r => ({
+            name: r.name,
+            address: r.kinds ? r.kinds.split(',')[0].replace(/_/g, ' ') : '',
+            rating: r.rate > 0 ? (r.rate * 1.6 + 0.2).toFixed(1) : 0
+          })));
           setShowDestDropdown(true);
         }
       } catch (err) {
