@@ -74,6 +74,11 @@ const userSchema = new mongoose.Schema({
     minlength: [6, 'Password must be at least 6 characters'],
     select: false // Don't return password by default
   },
+  followersCount: { type: Number, default: 0 },
+  followingCount: { type: Number, default: 0 },
+  tripsShared: { type: Number, default: 0 },
+  countriesVisited: [{ type: String }],
+  savedItineraries: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Trip' }],
   createdAt: {
     type: Date,
     default: Date.now

@@ -4,7 +4,7 @@
 // ==========================================
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { tripAPI, placesAPI } from '../../services/api';
 import {
   ArrowLeft, MapPin, Calendar, Users, Plane, Plus, Loader2,
@@ -25,6 +25,7 @@ const CATEGORIES = [
 
 const CreateTrip = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -55,6 +56,30 @@ const CreateTrip = () => {
   const [suggestions, setSuggestions] = useState([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [favorites, setFavorites] = useState(new Set());
+
+  // Auto-fill from URL search params (from Discover page)
+  useEffect(() => {
+    const dest = searchParams.get('destination');
+    const title = searchParams.get('title');
+    const budget = searchParams.get('budget');
+    const description = searchParams.get('description');
+    const tripType = searchParams.get('tripType');
+
+    if (dest || title) {
+      setFormData(prev => ({
+        ...prev,
+        destination: dest || prev.destination,
+        title: title || prev.title,
+        budget: budget || prev.budget,
+        description: description || prev.description,
+        tripType: tripType || prev.tripType,
+      }));
+      if (dest) {
+        setDestQuery(dest);
+        setSelectedDest({ name: dest, address: '' });
+      }
+    }
+  }, [searchParams]);
 
   // Load suggestions when category or destination changes
   useEffect(() => {

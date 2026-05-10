@@ -135,11 +135,15 @@ export const expenseAPI = {
 // Community API calls
 export const communityAPI = {
   getFeed: (params) => API.get('/community/feed', { params }),
+  getTrending: () => API.get('/community/trending'),
+  getPost: (id) => API.get(`/community/post/${id}`),
+  getProfile: (id) => API.get(`/community/profile/${id}`),
   createPost: (data) => API.post('/community/create', data),
-  likePost: (id) => API.put(`/community/${id}/like`),
-  comment: (id, content) => API.post(`/community/${id}/comment`, { content }),
-  savePost: (id) => API.put(`/community/${id}/save`),
-  deletePost: (id) => API.delete(`/community/${id}`),
+  likePost: (id) => API.post(`/community/like/${id}`),
+  comment: (id, content) => API.post(`/community/comment/${id}`, { content }),
+  savePost: (id) => API.post(`/community/save/${id}`),
+  followUser: (targetId) => API.post('/community/follow', { targetId }),
+  copyItinerary: (tripId) => API.post('/community/copy-itinerary', { tripId }),
 };
 
 // Invoice API calls

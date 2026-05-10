@@ -28,18 +28,27 @@ const DashboardHome = () => {
 
   const loadDashboardData = async () => {
     try {
-      const [dashRes, destRes] = await Promise.all([
-        tripAPI.getDashboardStats().catch(() => ({ data: { stats: null, recentTrips: [] } })),
-        placesAPI.suggestions('Popular').catch(() => ({ data: { results: [] } }))
-      ]);
-
+      const dashRes = await tripAPI.getDashboardStats().catch(() => ({ data: { stats: null, recentTrips: [] } }));
       if (dashRes.data.success) {
         setStats(dashRes.data.stats);
         setRecentTrips(dashRes.data.recentTrips || []);
       }
 
-      if (destRes.data.success) {
-        setDestinations(destRes.data.results || []);
+      // Fetch dynamic regional data
+      const defaultRegions = ['paris', 'tokyo', 'dubai', 'london', 'bali'];
+      const responses = await Promise.allSettled(
+        defaultRegions.map(city => placesAPI.attractions(city, 'tourist attractions'))
+      );
+      
+      const dynamicDestinations = [];
+      responses.forEach(r => {
+        if (r.status === 'fulfilled' && r.value.data?.success && r.value.data.results?.length > 0) {
+          dynamicDestinations.push(r.value.data.results[0]); // Take the top attraction from each region
+        }
+      });
+
+      if (dynamicDestinations.length > 0) {
+        setDestinations(dynamicDestinations);
       }
     } catch (err) {
       console.error('Dashboard load error:', err);
