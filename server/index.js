@@ -21,6 +21,7 @@ const expenseRoutes = require('./routes/expenses');
 const communityRoutes = require('./routes/community');
 const invoiceRoutes = require('./routes/invoices');
 const noteRoutes = require('./routes/notes');
+const sharedTripRoutes = require('./routes/sharedTrip');
 
 const app = express();
 
@@ -53,6 +54,7 @@ app.use('/api/expenses', expenseRoutes);
 app.use('/api/community', communityRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/notes', noteRoutes);
+app.use('/api/shared-trip', sharedTripRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

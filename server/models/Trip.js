@@ -89,7 +89,15 @@ const tripSchema = new mongoose.Schema({
   isPublic: {
     type: Boolean,
     default: false
-  }
+  },
+  shareId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  publicViews: { type: Number, default: 0 },
+  likes: { type: Number, default: 0 },
+  saves: { type: Number, default: 0 }
 }, {
   timestamps: true
 });
