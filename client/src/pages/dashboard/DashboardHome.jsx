@@ -76,6 +76,39 @@ const DashboardHome = () => {
     return config[status] || config.draft;
   };
 
+  const dummyTrips = [
+    {
+      _id: 'dummy1',
+      title: 'Europe Getaway',
+      status: 'upcoming',
+      startDate: new Date(Date.now() + 86400000 * 10).toISOString(),
+      endDate: new Date(Date.now() + 86400000 * 24).toISOString(),
+      destinations: [{ name: 'Paris' }, { name: 'Rome' }, { name: 'Barcelona' }],
+      travelers: [{ user: { firstName: 'J', lastName: 'D' } }, { user: { firstName: 'A', lastName: 'S' } }, { user: { firstName: 'M', lastName: 'R' } }],
+      coverImage: 'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=600&q=80',
+    },
+    {
+      _id: 'dummy2',
+      title: 'Maldives Escape',
+      status: 'completed',
+      startDate: new Date(Date.now() - 86400000 * 30).toISOString(),
+      endDate: new Date(Date.now() - 86400000 * 23).toISOString(),
+      destinations: [{ name: 'Malé' }],
+      travelers: [{ user: { firstName: 'J', lastName: 'D' } }, { user: { firstName: 'S', lastName: 'W' } }],
+      coverImage: 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=600&q=80',
+    },
+    {
+      _id: 'dummy3',
+      title: 'New Zealand Road Trip',
+      status: 'draft',
+      startDate: new Date(Date.now() + 86400000 * 60).toISOString(),
+      endDate: new Date(Date.now() + 86400000 * 74).toISOString(),
+      destinations: [{ name: 'Auckland' }, { name: 'Queenstown' }],
+      travelers: [{ user: { firstName: 'J', lastName: 'D' } }],
+      coverImage: 'https://images.unsplash.com/photo-1507699622108-4be3abd695ad?w=600&q=80',
+    }
+  ];
+
   // Fallback hero images
   const heroImage = 'https://images.unsplash.com/photo-1530841377377-3ff06c0ca713?w=1400&q=80';
 
@@ -235,9 +268,9 @@ const DashboardHome = () => {
           </Link>
         </div>
 
-        {recentTrips.length > 0 ? (
+        {recentTrips.length > 0 || dummyTrips.length > 0 ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {recentTrips.map((trip, i) => {
+            {(recentTrips.length > 0 ? recentTrips : dummyTrips).map((trip, i) => {
               const statusConfig = getStatusConfig(trip.status);
               const StatusIcon = statusConfig.icon;
               const duration = trip.duration || Math.ceil((new Date(trip.endDate) - new Date(trip.startDate)) / (1000 * 60 * 60 * 24));

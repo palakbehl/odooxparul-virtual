@@ -33,6 +33,39 @@ const Itinerary = () => {
     }
   };
 
+  const dummyTrips = [
+    {
+      _id: 'dummy1',
+      title: 'Europe Getaway',
+      startDate: new Date(Date.now() + 86400000 * 10).toISOString(),
+      endDate: new Date(Date.now() + 86400000 * 24).toISOString(),
+      destinations: [{ name: 'Paris' }, { name: 'Rome' }, { name: 'Barcelona' }],
+      itinerary: [
+        {
+          day: 1,
+          date: new Date(Date.now() + 86400000 * 10).toISOString(),
+          title: 'Arrival in Paris',
+          activities: [
+            { title: 'Check-in to Hotel', time: '14:00', location: 'Le Marais', completed: true },
+            { title: 'Eiffel Tower Visit', time: '17:30', location: 'Champ de Mars', description: 'Sunset view from the top', completed: false }
+          ]
+        },
+        {
+          day: 2,
+          date: new Date(Date.now() + 86400000 * 11).toISOString(),
+          title: 'Art & Culture',
+          activities: [
+            { title: 'Louvre Museum', time: '09:00', location: 'Rue de Rivoli', description: 'Mona Lisa and Venus de Milo', completed: false },
+            { title: 'Dinner at Le Jules Verne', time: '20:00', location: 'Eiffel Tower', completed: false }
+          ]
+        }
+      ]
+    }
+  ];
+
+  const displayTrips = trips.length > 0 ? trips : dummyTrips;
+  const currentTrip = selectedTrip || displayTrips[0];
+
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
     return new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
@@ -62,23 +95,23 @@ const Itinerary = () => {
         </Link>
       </div>
 
-      {trips.length > 0 ? (
+      {displayTrips.length > 0 ? (
         <div className="grid lg:grid-cols-[280px_1fr] gap-6">
           {/* Trip Selector */}
           <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm h-fit">
             <h3 className="text-sm font-semibold text-slate-700 mb-3">Select Trip</h3>
             <div className="space-y-2">
-              {trips.map(trip => (
+              {displayTrips.map(trip => (
                 <button
                   key={trip._id}
                   onClick={() => setSelectedTrip(trip)}
                   className={`w-full text-left p-3 rounded-xl transition-all ${
-                    selectedTrip?._id === trip._id
+                    currentTrip?._id === trip._id
                       ? 'bg-primary-50 border border-primary-200'
                       : 'hover:bg-slate-50 border border-transparent'
                   }`}
                 >
-                  <p className={`text-sm font-semibold ${selectedTrip?._id === trip._id ? 'text-primary-700' : 'text-slate-700'}`}>{trip.title}</p>
+                  <p className={`text-sm font-semibold ${currentTrip?._id === trip._id ? 'text-primary-700' : 'text-slate-700'}`}>{trip.title}</p>
                   <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
                     <MapPin className="w-3 h-3" />
                     {trip.destinations?.map(d => d.name).join(', ') || 'No destinations'}
@@ -90,20 +123,20 @@ const Itinerary = () => {
 
           {/* Itinerary Timeline */}
           <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
-            {selectedTrip ? (
+            {currentTrip ? (
               <>
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h2 className="text-xl font-bold text-slate-900">{selectedTrip.title}</h2>
+                    <h2 className="text-xl font-bold text-slate-900">{currentTrip.title}</h2>
                     <p className="text-sm text-slate-500">
-                      {formatDate(selectedTrip.startDate)} → {formatDate(selectedTrip.endDate)}
+                      {formatDate(currentTrip.startDate)} → {formatDate(currentTrip.endDate)}
                     </p>
                   </div>
                 </div>
 
-                {selectedTrip.itinerary?.length > 0 ? (
+                {currentTrip.itinerary?.length > 0 ? (
                   <div className="space-y-6">
-                    {selectedTrip.itinerary.map((day) => (
+                    {currentTrip.itinerary.map((day) => (
                       <div key={day.day} className="relative pl-8 pb-6 border-l-2 border-primary-200 last:border-transparent">
                         <div className="absolute -left-3 top-0 w-6 h-6 bg-primary-600 rounded-full flex items-center justify-center">
                           <span className="text-[10px] font-bold text-white">{day.day}</span>

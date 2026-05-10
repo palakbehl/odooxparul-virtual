@@ -43,6 +43,32 @@ const Checklist = () => {
     }
   };
 
+  const dummyTrips = [
+    {
+      _id: 'dummy1',
+      title: 'Europe Getaway',
+      checklist: [
+        { item: 'Passport', checked: true, category: 'documents' },
+        { item: 'Flight Tickets', checked: true, category: 'documents' },
+        { item: 'T-shirts (x5)', checked: false, category: 'clothing' },
+        { item: 'Toothbrush', checked: false, category: 'toiletries' },
+        { item: 'Camera', checked: true, category: 'electronics' },
+        { item: 'Power adapter', checked: false, category: 'electronics' },
+      ]
+    },
+    {
+      _id: 'dummy2',
+      title: 'Maldives Escape',
+      checklist: [
+        { item: 'Swimwear', checked: true, category: 'clothing' },
+        { item: 'Sunscreen', checked: false, category: 'toiletries' },
+      ]
+    }
+  ];
+
+  const displayTrips = trips.length > 0 ? trips : dummyTrips;
+  const currentTrip = selectedTrip || displayTrips[0];
+
   const toggleItem = async (index) => {
     if (!selectedTrip) return;
     const updatedChecklist = [...(selectedTrip.checklist || [])];
@@ -81,7 +107,7 @@ const Checklist = () => {
     }
   };
 
-  const checklist = selectedTrip?.checklist || [];
+  const checklist = currentTrip?.checklist || [];
   const checkedCount = checklist.filter(c => c.checked).length;
   const progress = checklist.length > 0 ? Math.round((checkedCount / checklist.length) * 100) : 0;
 
@@ -108,22 +134,22 @@ const Checklist = () => {
         <p className="text-slate-500 text-sm mt-1">Never forget to pack anything</p>
       </div>
 
-      {trips.length > 0 ? (
+      {displayTrips.length > 0 ? (
         <div className="grid lg:grid-cols-[280px_1fr] gap-6">
           {/* Trip Selector */}
           <div className="space-y-4">
             <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
               <h3 className="text-sm font-semibold text-slate-700 mb-3">Select Trip</h3>
               <div className="space-y-2">
-                {trips.map(trip => (
+                {displayTrips.map(trip => (
                   <button
                     key={trip._id}
                     onClick={() => setSelectedTrip(trip)}
                     className={`w-full text-left p-3 rounded-xl transition-all ${
-                      selectedTrip?._id === trip._id ? 'bg-primary-50 border border-primary-200' : 'hover:bg-slate-50 border border-transparent'
+                      currentTrip?._id === trip._id ? 'bg-primary-50 border border-primary-200' : 'hover:bg-slate-50 border border-transparent'
                     }`}
                   >
-                    <p className={`text-sm font-semibold ${selectedTrip?._id === trip._id ? 'text-primary-700' : 'text-slate-700'}`}>{trip.title}</p>
+                    <p className={`text-sm font-semibold ${currentTrip?._id === trip._id ? 'text-primary-700' : 'text-slate-700'}`}>{trip.title}</p>
                     <p className="text-xs text-slate-400 mt-0.5">{(trip.checklist || []).length} items</p>
                   </button>
                 ))}
@@ -131,7 +157,7 @@ const Checklist = () => {
             </div>
 
             {/* Progress */}
-            {selectedTrip && (
+            {currentTrip && (
               <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
                 <h3 className="text-sm font-semibold text-slate-700 mb-3">Progress</h3>
                 <div className="text-center">
@@ -159,10 +185,10 @@ const Checklist = () => {
 
           {/* Checklist */}
           <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
-            {selectedTrip ? (
+            {currentTrip ? (
               <>
                 <div className="flex items-center justify-between mb-5">
-                  <h2 className="text-lg font-bold text-slate-900">{selectedTrip.title} — Packing List</h2>
+                  <h2 className="text-lg font-bold text-slate-900">{currentTrip.title} — Packing List</h2>
                 </div>
 
                 {/* Add Item */}
