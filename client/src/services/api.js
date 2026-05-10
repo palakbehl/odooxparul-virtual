@@ -90,6 +90,10 @@ export const adminAPI = {
   getTrips: (params) => API.get('/admin/trips', { params }),
   deleteUser: (id) => API.delete(`/admin/users/${id}`),
   updateUserRole: (id, role) => API.put(`/admin/users/${id}/role`, { role }),
+  getActivities: () => API.get('/admin/activities'),
+  getAnalytics: () => API.get('/admin/analytics'),
+  getBudget: () => API.get('/admin/budget'),
+  getChecklist: () => API.get('/admin/checklist'),
 };
 
 // Stop API calls
