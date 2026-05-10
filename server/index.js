@@ -13,6 +13,7 @@ const tripRoutes = require('./routes/trips');
 const destinationRoutes = require('./routes/destinations');
 const itineraryRoutes = require('./routes/itinerary');
 const placesRoutes = require('./routes/places');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use('/api/trips', tripRoutes);
 app.use('/api/destinations', destinationRoutes);
 app.use('/api/itinerary', itineraryRoutes);
 app.use('/api/places', placesRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

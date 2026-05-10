@@ -5,7 +5,9 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import ProtectedAdminRoute from './components/ProtectedAdminRoute';
 import DashboardLayout from './components/DashboardLayout';
+import AdminLayout from './components/AdminLayout';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -17,6 +19,8 @@ import Discover from './pages/dashboard/Discover';
 import Budget from './pages/dashboard/Budget';
 import Checklist from './pages/dashboard/Checklist';
 import Profile from './pages/dashboard/Profile';
+import AdminHome from './pages/admin/AdminHome';
+import ManageUsers from './pages/admin/ManageUsers';
 
 function App() {
   return (
@@ -28,7 +32,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* Protected Dashboard Routes */}
+          {/* Protected Dashboard Routes (Regular Users) */}
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <DashboardLayout />
@@ -41,6 +45,21 @@ function App() {
             <Route path="itinerary" element={<Itinerary />} />
             <Route path="itinerary/:tripId" element={<Itinerary />} />
             <Route path="discover" element={<Discover />} />
+            <Route path="budget" element={<Budget />} />
+            <Route path="checklist" element={<Checklist />} />
+            <Route path="profile" element={<Profile />} />
+          </Route>
+
+          {/* Protected Admin Routes */}
+          <Route path="/admin" element={
+            <ProtectedAdminRoute>
+              <AdminLayout />
+            </ProtectedAdminRoute>
+          }>
+            <Route index element={<AdminHome />} />
+            <Route path="users" element={<ManageUsers />} />
+            <Route path="activities" element={<Discover />} />
+            <Route path="analytics" element={<AdminHome />} />
             <Route path="budget" element={<Budget />} />
             <Route path="checklist" element={<Checklist />} />
             <Route path="profile" element={<Profile />} />

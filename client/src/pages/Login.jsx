@@ -38,8 +38,13 @@ const Login = () => {
     setLoading(true);
     setError('');
     try {
-      await login(formData);
-      navigate('/dashboard', { replace: true });
+      const data = await login(formData);
+      // Role-based redirect
+      if (data?.user?.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please try again.');
     } finally {

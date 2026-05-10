@@ -82,5 +82,14 @@ export const placesAPI = {
   suggestions: (category) => API.get('/places/suggestions', { params: { category } }),
 };
 
+// Admin API calls
+export const adminAPI = {
+  getStats: () => API.get('/admin/stats'),
+  getUsers: (params) => API.get('/admin/users', { params }),
+  getTrips: (params) => API.get('/admin/trips', { params }),
+  deleteUser: (id) => API.delete(`/admin/users/${id}`),
+  updateUserRole: (id, role) => API.put(`/admin/users/${id}/role`, { role }),
+};
+
 export default API;
 
