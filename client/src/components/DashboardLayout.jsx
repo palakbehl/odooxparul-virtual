@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   Home, Map, CalendarDays, Compass, DollarSign, CheckSquare,
   User, Search, Bell, MessageCircle, ChevronDown, LogOut,
-  Plane, Menu, X, Plus, Settings, Apple, Smartphone
+  Plane, Menu, X, Plus, Settings, Users, Receipt, FileText
 } from 'lucide-react';
 
 const DashboardLayout = () => {
@@ -25,8 +25,11 @@ const DashboardLayout = () => {
     { name: 'My Trips', path: '/dashboard/trips', icon: Map },
     { name: 'Itinerary', path: '/dashboard/itinerary', icon: CalendarDays },
     { name: 'Discover', path: '/dashboard/discover', icon: Compass },
+    { name: 'Community', path: '/dashboard/community', icon: Users },
     { name: 'Budget', path: '/dashboard/budget', icon: DollarSign },
     { name: 'Checklist', path: '/dashboard/checklist', icon: CheckSquare },
+    { name: 'Notes', path: '/dashboard/notes', icon: FileText },
+    { name: 'Invoices', path: '/dashboard/invoices', icon: Receipt },
   ];
 
   const bottomNavItems = [

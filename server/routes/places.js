@@ -11,7 +11,8 @@ const {
   autosuggest,
   getPlaceDetails,
   batchDetails,
-  getSuggestions
+  getSuggestions,
+  getAttractions
 } = require('../controllers/placesController');
 
 // These are public — no auth needed for place search
@@ -22,5 +23,6 @@ router.get('/autosuggest', autosuggest);       // Autosuggest by partial name
 router.get('/details/:xid', getPlaceDetails);  // Full details for one place
 router.post('/batch-details', batchDetails);   // Batch details for multiple xids
 router.get('/suggestions', getSuggestions);    // Curated suggestions
+router.get('/attractions', getAttractions);    // Destination-specific attractions
 
 module.exports = router;

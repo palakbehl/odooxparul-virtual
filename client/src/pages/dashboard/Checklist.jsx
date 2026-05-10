@@ -1,287 +1,278 @@
-// ==========================================
-// Checklist Page - Traveloop
-// ==========================================
-
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { tripAPI } from '../../services/api';
 import {
-  CheckSquare, Square, Plus, Trash2, Loader2,
-  Luggage, Shirt, Pill, Camera, FileText, ChevronDown
+  CheckSquare, Plus, Trash2, RotateCcw, Share2, ChevronUp, ChevronDown,
+  FileText, Shirt, Smartphone, Heart, Briefcase, Loader2, X
 } from 'lucide-react';
 
-const categoryConfig = {
-  general: { label: 'General', icon: FileText, color: 'text-slate-500' },
-  clothing: { label: 'Clothing', icon: Shirt, color: 'text-blue-500' },
-  toiletries: { label: 'Toiletries', icon: Pill, color: 'text-emerald-500' },
-  electronics: { label: 'Electronics', icon: Camera, color: 'text-purple-500' },
-  documents: { label: 'Documents', icon: FileText, color: 'text-amber-500' },
-};
+// Map icon keys to actual components (so we can store key strings in localStorage)
+const ICON_MAP = { FileText, Shirt, Smartphone, Heart, Briefcase };
+
+const DEFAULT_CATS = [
+  { name: 'Documents', iconKey: 'FileText', color: 'bg-blue-500', items: ['Passport', 'Flight Tickets (printed)', 'Travel insurance', 'Hotel booking confirmation', 'Visa documents', 'ID cards'] },
+  { name: 'Clothing', iconKey: 'Shirt', color: 'bg-emerald-500', items: ['Casual Shirts', 'Trousers / jeans', 'Comfortable walking shoes', 'Light jacket / windbreaker', 'Swimwear', 'Sleepwear'] },
+  { name: 'Electronics', iconKey: 'Smartphone', color: 'bg-purple-500', items: ['Phone charger', 'Universal power adapter', 'Earphone / headphones', 'Camera', 'Portable battery'] },
+  { name: 'Medical', iconKey: 'Heart', color: 'bg-red-500', items: ['Personal medications', 'First-aid kit', 'Sunscreen', 'Hand sanitizer', 'Masks'] },
+  { name: 'Essentials', iconKey: 'Briefcase', color: 'bg-amber-500', items: ['Wallet / cash', 'Travel pillow', 'Water bottle', 'Snacks', 'Umbrella', 'Locks / padlocks'] }
+];
 
 const Checklist = () => {
   const [trips, setTrips] = useState([]);
-  const [selectedTrip, setSelectedTrip] = useState(null);
+  const [tp, setTp] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [newItem, setNewItem] = useState('');
-  const [newCategory, setNewCategory] = useState('general');
+  const [categories, setCategories] = useState([]);
+  const [collapsed, setCollapsed] = useState({});
+  const [showAdd, setShowAdd] = useState(false);
+  const [addCat, setAddCat] = useState('');
+  const [addItem, setAddItem] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => { loadTrips(); }, []);
 
   useEffect(() => {
-    loadTrips();
-  }, []);
+    if (tp) {
+      const key = `checklist_${tp._id}`;
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        try {
+          setCategories(JSON.parse(saved));
+        } catch {
+          initDefaults();
+        }
+      } else {
+        initDefaults();
+      }
+    }
+  }, [tp]);
+
+  useEffect(() => {
+    if (tp && categories.length > 0) {
+      localStorage.setItem(`checklist_${tp._id}`, JSON.stringify(categories));
+    }
+  }, [categories, tp]);
+
+  const initDefaults = () => {
+    setCategories(DEFAULT_CATS.map(c => ({
+      name: c.name, iconKey: c.iconKey, color: c.color,
+      items: c.items.map(i => ({ name: i, packed: false }))
+    })));
+  };
 
   const loadTrips = async () => {
     try {
-      const { data } = await tripAPI.getAll({ sort: '-startDate' });
+      const { data } = await tripAPI.getAll({});
       if (data.success && data.trips.length > 0) {
         setTrips(data.trips);
-        setSelectedTrip(data.trips[0]);
+        setTp(data.trips[0]);
       }
-    } catch (err) {
-      console.error('Load error:', err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
   };
 
-  const dummyTrips = [
-    {
-      _id: 'dummy1',
-      title: 'Europe Getaway',
-      checklist: [
-        { item: 'Passport', checked: true, category: 'documents' },
-        { item: 'Flight Tickets', checked: true, category: 'documents' },
-        { item: 'T-shirts (x5)', checked: false, category: 'clothing' },
-        { item: 'Toothbrush', checked: false, category: 'toiletries' },
-        { item: 'Camera', checked: true, category: 'electronics' },
-        { item: 'Power adapter', checked: false, category: 'electronics' },
-      ]
-    },
-    {
-      _id: 'dummy2',
-      title: 'Maldives Escape',
-      checklist: [
-        { item: 'Swimwear', checked: true, category: 'clothing' },
-        { item: 'Sunscreen', checked: false, category: 'toiletries' },
-      ]
-    }
-  ];
-
-  const displayTrips = trips.length > 0 ? trips : dummyTrips;
-  const currentTrip = selectedTrip || displayTrips[0];
-
-  const toggleItem = async (index) => {
-    if (!selectedTrip) return;
-    const updatedChecklist = [...(selectedTrip.checklist || [])];
-    updatedChecklist[index] = { ...updatedChecklist[index], checked: !updatedChecklist[index].checked };
-    try {
-      await tripAPI.update(selectedTrip._id, { checklist: updatedChecklist });
-      setSelectedTrip({ ...selectedTrip, checklist: updatedChecklist });
-      setTrips(trips.map(t => t._id === selectedTrip._id ? { ...t, checklist: updatedChecklist } : t));
-    } catch (err) {
-      console.error('Toggle error:', err);
-    }
+  const togglePacked = (ci, ii) => {
+    const cats = [...categories];
+    cats[ci] = { ...cats[ci], items: [...cats[ci].items] };
+    cats[ci].items[ii] = { ...cats[ci].items[ii], packed: !cats[ci].items[ii].packed };
+    setCategories(cats);
   };
 
-  const addItem = async () => {
-    if (!newItem.trim() || !selectedTrip) return;
-    const updatedChecklist = [...(selectedTrip.checklist || []), { item: newItem.trim(), checked: false, category: newCategory }];
-    try {
-      await tripAPI.update(selectedTrip._id, { checklist: updatedChecklist });
-      setSelectedTrip({ ...selectedTrip, checklist: updatedChecklist });
-      setTrips(trips.map(t => t._id === selectedTrip._id ? { ...t, checklist: updatedChecklist } : t));
-      setNewItem('');
-    } catch (err) {
-      console.error('Add error:', err);
-    }
+  const deleteItem = (ci, ii) => {
+    const cats = [...categories];
+    cats[ci] = { ...cats[ci], items: cats[ci].items.filter((_, idx) => idx !== ii) };
+    setCategories(cats);
   };
 
-  const removeItem = async (index) => {
-    if (!selectedTrip) return;
-    const updatedChecklist = selectedTrip.checklist.filter((_, i) => i !== index);
-    try {
-      await tripAPI.update(selectedTrip._id, { checklist: updatedChecklist });
-      setSelectedTrip({ ...selectedTrip, checklist: updatedChecklist });
-      setTrips(trips.map(t => t._id === selectedTrip._id ? { ...t, checklist: updatedChecklist } : t));
-    } catch (err) {
-      console.error('Remove error:', err);
-    }
+  const resetAll = () => {
+    setCategories(cs => cs.map(c => ({
+      ...c, items: c.items.map(i => ({ ...i, packed: false }))
+    })));
   };
 
-  const checklist = currentTrip?.checklist || [];
-  const checkedCount = checklist.filter(c => c.checked).length;
-  const progress = checklist.length > 0 ? Math.round((checkedCount / checklist.length) * 100) : 0;
+  const handleAdd = () => {
+    if (!addItem.trim()) return;
+    const ci = categories.findIndex(c => c.name === addCat);
+    if (ci > -1) {
+      const cats = [...categories];
+      cats[ci] = { ...cats[ci], items: [...cats[ci].items, { name: addItem, packed: false }] };
+      setCategories(cats);
+    } else {
+      setCategories([...categories, {
+        name: addCat || 'Custom', iconKey: 'Briefcase', color: 'bg-slate-500',
+        items: [{ name: addItem, packed: false }]
+      }]);
+    }
+    setAddItem('');
+    setShowAdd(false);
+  };
 
-  // Group by category
-  const grouped = checklist.reduce((acc, item, i) => {
-    const cat = item.category || 'general';
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push({ ...item, originalIndex: i });
-    return acc;
-  }, {});
+  const shareChecklist = () => {
+    const lines = [`🧳 Packing Checklist — ${tp?.title || 'Trip'}\n`];
+    categories.forEach(cat => {
+      lines.push(`\n📦 ${cat.name}`);
+      cat.items.forEach(item => {
+        lines.push(`  ${item.packed ? '✅' : '⬜'} ${item.name}`);
+      });
+    });
+    lines.push(`\n---\nProgress: ${packedItems}/${totalItems} packed (${pct}%)`);
+    const text = lines.join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
+  };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
-      </div>
-    );
-  }
+  const totalItems = categories.reduce((s, c) => s + c.items.length, 0);
+  const packedItems = categories.reduce((s, c) => s + c.items.filter(i => i.packed).length, 0);
+  const pct = totalItems > 0 ? Math.round(packedItems / totalItems * 100) : 0;
+
+  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 text-primary-600 animate-spin" /></div>;
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold font-display text-slate-900">Checklist</h1>
-        <p className="text-slate-500 text-sm mt-1">Never forget to pack anything</p>
+    <div className="animate-fade-in max-w-5xl mx-auto">
+      <Link to="/dashboard/trips" className="text-sm text-primary-600 hover:text-primary-700 font-medium mb-2 inline-block">← Back to My Trips</Link>
+
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold font-display text-slate-900">Packing Checklist</h1>
+          {tp && <p className="text-slate-500 mt-1">Trip: {tp.title}</p>}
+        </div>
+        <div className="flex gap-2">
+          <button onClick={resetAll} className="flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50">
+            <RotateCcw className="w-4 h-4" />Reset all
+          </button>
+          <button onClick={shareChecklist} className="flex items-center gap-1.5 px-4 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700">
+            <Share2 className="w-4 h-4" />{copied ? 'Copied!' : 'Share Checklist'}
+          </button>
+        </div>
       </div>
 
-      {displayTrips.length > 0 ? (
-        <div className="grid lg:grid-cols-[280px_1fr] gap-6">
-          {/* Trip Selector */}
-          <div className="space-y-4">
-            <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
-              <h3 className="text-sm font-semibold text-slate-700 mb-3">Select Trip</h3>
-              <div className="space-y-2">
-                {displayTrips.map(trip => (
-                  <button
-                    key={trip._id}
-                    onClick={() => setSelectedTrip(trip)}
-                    className={`w-full text-left p-3 rounded-xl transition-all ${
-                      currentTrip?._id === trip._id ? 'bg-primary-50 border border-primary-200' : 'hover:bg-slate-50 border border-transparent'
-                    }`}
-                  >
-                    <p className={`text-sm font-semibold ${currentTrip?._id === trip._id ? 'text-primary-700' : 'text-slate-700'}`}>{trip.title}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">{(trip.checklist || []).length} items</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Progress */}
-            {currentTrip && (
-              <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
-                <h3 className="text-sm font-semibold text-slate-700 mb-3">Progress</h3>
-                <div className="text-center">
-                  <div className="relative w-24 h-24 mx-auto mb-3">
-                    <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                      <circle cx="50" cy="50" r="42" fill="none" stroke="#f1f5f9" strokeWidth="8" />
-                      <circle cx="50" cy="50" r="42" fill="none" stroke="url(#gradient)" strokeWidth="8"
-                        strokeDasharray={`${progress * 2.64} ${264 - progress * 2.64}`} strokeLinecap="round" />
-                      <defs>
-                        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                          <stop offset="0%" stopColor="#2563eb" />
-                          <stop offset="100%" stopColor="#7c3aed" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-lg font-bold text-slate-900">{progress}%</span>
-                    </div>
-                  </div>
-                  <p className="text-xs text-slate-500">{checkedCount} of {checklist.length} packed</p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Checklist */}
-          <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
-            {currentTrip ? (
-              <>
-                <div className="flex items-center justify-between mb-5">
-                  <h2 className="text-lg font-bold text-slate-900">{currentTrip.title} — Packing List</h2>
-                </div>
-
-                {/* Add Item */}
-                <div className="flex gap-2 mb-6">
-                  <input
-                    type="text"
-                    value={newItem}
-                    onChange={(e) => setNewItem(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && addItem()}
-                    placeholder="Add new item..."
-                    className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-primary-400 focus:ring-2 focus:ring-primary-100 transition-all"
-                  />
-                  <select
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value)}
-                    className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-primary-400 transition-all"
-                  >
-                    {Object.entries(categoryConfig).map(([key, val]) => (
-                      <option key={key} value={key}>{val.label}</option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={addItem}
-                    className="px-4 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* Items by Category */}
-                {Object.keys(grouped).length > 0 ? (
-                  <div className="space-y-5">
-                    {Object.entries(grouped).map(([cat, items]) => {
-                      const config = categoryConfig[cat] || categoryConfig.general;
-                      const CatIcon = config.icon;
-                      return (
-                        <div key={cat}>
-                          <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
-                            <CatIcon className={`w-4 h-4 ${config.color}`} />
-                            {config.label}
-                          </h4>
-                          <div className="space-y-1">
-                            {items.map((item) => (
-                              <div
-                                key={item.originalIndex}
-                                className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors group"
-                              >
-                                <button onClick={() => toggleItem(item.originalIndex)}>
-                                  {item.checked ? (
-                                    <CheckSquare className="w-5 h-5 text-primary-600" />
-                                  ) : (
-                                    <Square className="w-5 h-5 text-slate-300" />
-                                  )}
-                                </button>
-                                <span className={`flex-1 text-sm ${item.checked ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
-                                  {item.item}
-                                </span>
-                                <button
-                                  onClick={() => removeItem(item.originalIndex)}
-                                  className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-all"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <Luggage className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-bold text-slate-900 mb-2">Empty checklist</h3>
-                    <p className="text-sm text-slate-500">Add items to start packing</p>
-                  </div>
-                )}
-              </>
-            ) : (
-              <p className="text-slate-500">Select a trip</p>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center">
-          <CheckSquare className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-slate-900 mb-2">No checklists</h3>
-          <p className="text-slate-500 mb-6">Create a trip to start packing</p>
-          <Link to="/dashboard/trips/new" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-accent-600 text-white rounded-xl font-semibold text-sm">
-            <Plus className="w-4 h-4" /> Create Trip
-          </Link>
+      {trips.length > 1 && (
+        <div className="mb-4">
+          <select value={tp?._id || ''} onChange={e => setTp(trips.find(t => t._id === e.target.value))} className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm">
+            {trips.map(t => <option key={t._id} value={t._id}>{t.title}</option>)}
+          </select>
         </div>
       )}
+
+      <div className="grid lg:grid-cols-[1fr_280px] gap-6">
+        <div>
+          {/* Progress */}
+          <div className="bg-white rounded-2xl border border-slate-100 p-5 mb-6">
+            <p className="text-sm text-slate-700 mb-2">Progress: <span className="font-bold">{packedItems}/{totalItems} items packed</span></p>
+            <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-full bg-primary-600 rounded-full transition-all" style={{ width: `${pct}%` }} />
+            </div>
+          </div>
+
+          {/* Categories */}
+          <div className="space-y-4 mb-6">
+            {categories.map((cat, ci) => {
+              const CatIcon = ICON_MAP[cat.iconKey] || Briefcase;
+              const catPacked = cat.items.filter(i => i.packed).length;
+              const isOpen = !collapsed[ci];
+
+              return (
+                <div key={ci} className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                  <button onClick={() => setCollapsed({ ...collapsed, [ci]: isOpen })} className="w-full flex items-center justify-between p-4 hover:bg-slate-50">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 ${cat.color} rounded-lg flex items-center justify-center`}>
+                        <CatIcon className="w-4 h-4 text-white" />
+                      </div>
+                      <h3 className="text-sm font-bold text-slate-900">{cat.name}</h3>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-400">{catPacked}/{cat.items.length}</span>
+                      {isOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                    </div>
+                  </button>
+
+                  {isOpen && (
+                    <div className="px-4 pb-4 space-y-1">
+                      {cat.items.map((item, ii) => (
+                        <div key={ii} className="flex items-center gap-3 py-2 group">
+                          <button
+                            onClick={() => togglePacked(ci, ii)}
+                            className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${item.packed ? 'bg-primary-600 border-primary-600' : 'border-slate-300 hover:border-primary-400'}`}
+                          >
+                            {item.packed && <CheckSquare className="w-3.5 h-3.5 text-white" />}
+                          </button>
+                          <span className={`flex-1 text-sm ${item.packed ? 'line-through text-slate-400' : 'text-slate-700'}`}>{item.name}</span>
+                          <button onClick={() => deleteItem(ci, ii)} className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-50 rounded">
+                            <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Add item button */}
+          <button onClick={() => setShowAdd(true)} className="w-full py-4 border-2 border-dashed border-primary-200 rounded-2xl text-primary-600 hover:bg-primary-50 text-sm font-semibold flex items-center justify-center gap-1.5">
+            <Plus className="w-4 h-4" />Add item to checklist
+          </button>
+        </div>
+
+        {/* Sidebar summary */}
+        <div className="space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-100 p-5 text-center">
+            <h3 className="text-sm font-bold text-slate-900 mb-4">Checklist Summary</h3>
+            <div className="relative w-24 h-24 mx-auto mb-4">
+              <svg className="w-24 h-24 -rotate-90">
+                <circle cx="48" cy="48" r="40" fill="none" stroke="#e2e8f0" strokeWidth="8" />
+                <circle cx="48" cy="48" r="40" fill="none" stroke="#2563eb" strokeWidth="8" strokeDasharray={251} strokeDashoffset={251 - (251 * pct / 100)} strokeLinecap="round" />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-2xl font-bold text-primary-600">{pct}%</span>
+                <span className="text-[10px] text-slate-400">Packed</span>
+              </div>
+            </div>
+            <div className="space-y-2 text-left">
+              <div className="flex items-center gap-2"><CheckSquare className="w-4 h-4 text-emerald-500" /><span className="text-sm"><span className="font-bold">{packedItems}</span> Packed</span></div>
+              <div className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-slate-300 rounded" /><span className="text-sm"><span className="font-bold">{totalItems - packedItems}</span> Pending</span></div>
+              <div className="flex items-center gap-2"><FileText className="w-4 h-4 text-slate-400" /><span className="text-sm"><span className="font-bold">{totalItems}</span> Total Items</span></div>
+            </div>
+          </div>
+          <div className="bg-emerald-50 rounded-2xl border border-emerald-100 p-4">
+            <p className="text-xs font-semibold text-emerald-700 mb-1">💡 Tip</p>
+            <p className="text-xs text-emerald-600">Make sure to review your checklist a day before your trip!</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ADD MODAL */}
+      {showAdd && (<>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50" onClick={() => setShowAdd(false)} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl animate-fade-in" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+              <h3 className="font-bold">Add Item</h3>
+              <button onClick={() => setShowAdd(false)} className="p-1.5 rounded-lg hover:bg-slate-100"><X className="w-5 h-5 text-slate-400" /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Category</label>
+                <select value={addCat} onChange={e => setAddCat(e.target.value)} className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                  <option value="">Select category</option>
+                  {categories.map((c, i) => <option key={i} value={c.name}>{c.name}</option>)}
+                  <option value="Custom">+ New Category</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Item Name *</label>
+                <input value={addItem} onChange={e => setAddItem(e.target.value)} className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-primary-400" onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 p-5 border-t border-slate-100">
+              <button onClick={() => setShowAdd(false)} className="px-5 py-2.5 text-slate-600 text-sm">Cancel</button>
+              <button onClick={handleAdd} disabled={!addItem.trim()} className="px-6 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold disabled:opacity-60">Add</button>
+            </div>
+          </div>
+        </div>
+      </>)}
     </div>
   );
 };

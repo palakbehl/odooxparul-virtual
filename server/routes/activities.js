@@ -1,0 +1,11 @@
+const express = require('express');
+const r = express.Router();
+const c = require('../controllers/activityController');
+const { protect } = require('../middleware/auth');
+r.use(protect);
+r.post('/add', c.addActivity);
+r.get('/day/:dayPlanId', c.getActivities);
+r.put('/:id', c.updateActivity);
+r.delete('/:id', c.deleteActivity);
+r.put('/reorder/batch', c.reorderActivities);
+module.exports = r;

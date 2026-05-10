@@ -1,0 +1,10 @@
+const express = require('express');
+const r = express.Router();
+const c = require('../controllers/invoiceController');
+const { protect } = require('../middleware/auth');
+r.use(protect);
+r.post('/create', c.createInvoice);
+r.get('/trip/:tripId', c.getTripInvoices);
+r.put('/:id/paid', c.markPaid);
+r.delete('/:id', c.deleteInvoice);
+module.exports = r;

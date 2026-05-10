@@ -1,0 +1,10 @@
+const express = require('express');
+const r = express.Router();
+const c = require('../controllers/stopController');
+const { protect } = require('../middleware/auth');
+r.use(protect);
+r.post('/add', c.addStop);
+r.get('/trip/:tripId', c.getStops);
+r.put('/:id', c.updateStop);
+r.delete('/:id', c.deleteStop);
+module.exports = r;

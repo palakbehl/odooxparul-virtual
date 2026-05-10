@@ -245,7 +245,7 @@ const MyTrips = () => {
                               ) : <div className="w-8 h-8" />}
                             </div>
                             <Link
-                              to={`/dashboard/trips/${trip._id}`}
+                              to={isCompleted ? `/dashboard/timeline/${trip._id}` : isDraft ? `/dashboard/itinerary?trip=${trip._id}` : `/dashboard/itinerary?trip=${trip._id}`}
                               className={`flex items-center gap-2 px-5 py-2.5 bg-white border rounded-xl text-sm font-bold transition-all shadow-sm hover:shadow-md ${config.btnText} ${config.btnBg}`}
                             >
                               {isCompleted ? 'View Trip Summary' : isDraft ? 'Continue Planning' : 'View Trip'}

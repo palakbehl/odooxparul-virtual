@@ -15,9 +15,13 @@ import DashboardHome from './pages/dashboard/DashboardHome';
 import MyTrips from './pages/dashboard/MyTrips';
 import CreateTrip from './pages/dashboard/CreateTrip';
 import Itinerary from './pages/dashboard/Itinerary';
+import DayTimeline from './pages/dashboard/DayTimeline';
 import Discover from './pages/dashboard/Discover';
+import Community from './pages/dashboard/Community';
 import Budget from './pages/dashboard/Budget';
 import Checklist from './pages/dashboard/Checklist';
+import Invoices from './pages/dashboard/Invoices';
+import Notes from './pages/dashboard/Notes';
 import Profile from './pages/dashboard/Profile';
 import AdminHome from './pages/admin/AdminHome';
 import ManageUsers from './pages/admin/ManageUsers';
@@ -44,9 +48,14 @@ function App() {
             <Route path="trips/:id" element={<MyTrips />} />
             <Route path="itinerary" element={<Itinerary />} />
             <Route path="itinerary/:tripId" element={<Itinerary />} />
+            <Route path="timeline/:tripId" element={<DayTimeline />} />
             <Route path="discover" element={<Discover />} />
+            <Route path="community" element={<Community />} />
             <Route path="budget" element={<Budget />} />
             <Route path="checklist" element={<Checklist />} />
+            <Route path="invoices" element={<Invoices />} />
+            <Route path="notes" element={<Notes />} />
+            <Route path="notes/:tripId" element={<Notes />} />
             <Route path="profile" element={<Profile />} />
           </Route>
 

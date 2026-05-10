@@ -37,6 +37,7 @@ const CreateTrip = () => {
     destination: '',
     tripType: 'Leisure',
     travelers: '1 Traveler',
+    budget: '',
     description: '',
   });
 
@@ -192,7 +193,7 @@ const CreateTrip = () => {
         tripType: formData.tripType,
         travelerCount: parseInt(formData.travelers) || 1,
         tags: [formData.tripType],
-        budget: { total: 0, currency: 'INR' },
+        budget: { total: Number(formData.budget) || 0, currency: 'INR' },
         status: 'draft',
       };
       const { data } = await tripAPI.create(payload);
@@ -381,6 +382,23 @@ const CreateTrip = () => {
                 </select>
                 <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
               </div>
+            </div>
+
+            {/* Budget */}
+            <div className="col-span-full">
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Estimated Budget (₹)</label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-semibold">₹</span>
+                <input
+                  type="number"
+                  name="budget"
+                  value={formData.budget}
+                  onChange={handleChange}
+                  placeholder="e.g. 50000"
+                  className="w-full pl-8 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-primary-400 focus:ring-2 focus:ring-primary-100 transition-all"
+                />
+              </div>
+              <p className="text-xs text-slate-400 mt-1">Set a total budget to track expenses against</p>
             </div>
           </div>
 

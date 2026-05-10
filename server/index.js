@@ -14,6 +14,13 @@ const destinationRoutes = require('./routes/destinations');
 const itineraryRoutes = require('./routes/itinerary');
 const placesRoutes = require('./routes/places');
 const adminRoutes = require('./routes/admin');
+const stopRoutes = require('./routes/stops');
+const dayPlanRoutes = require('./routes/dayplans');
+const activityRoutes = require('./routes/activities');
+const expenseRoutes = require('./routes/expenses');
+const communityRoutes = require('./routes/community');
+const invoiceRoutes = require('./routes/invoices');
+const noteRoutes = require('./routes/notes');
 
 const app = express();
 
@@ -39,6 +46,13 @@ app.use('/api/destinations', destinationRoutes);
 app.use('/api/itinerary', itineraryRoutes);
 app.use('/api/places', placesRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/stops', stopRoutes);
+app.use('/api/dayplans', dayPlanRoutes);
+app.use('/api/activities', activityRoutes);
+app.use('/api/expenses', expenseRoutes);
+app.use('/api/community', communityRoutes);
+app.use('/api/invoices', invoiceRoutes);
+app.use('/api/notes', noteRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

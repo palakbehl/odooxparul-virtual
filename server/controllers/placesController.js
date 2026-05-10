@@ -351,6 +351,90 @@ exports.getSuggestions = async (req, res) => {
 };
 
 // ==========================================
+// 8. ATTRACTIONS - Get attractions for a destination + category
+// GET /api/places/attractions?destination=Paris&category=tourist+attractions
+// ==========================================
+exports.getAttractions = async (req, res) => {
+  try {
+    const { destination, category = 'tourist attractions' } = req.query;
+    if (!destination || destination.length < 2) return res.json({ success: true, results: [] });
+
+    // Build fallback data based on destination and category
+    const destLower = destination.toLowerCase().trim();
+    const catLower = (category || '').toLowerCase();
+
+    const attractionsByCity = {
+      paris: [
+        { name: 'Eiffel Tower Visit', address: 'Champ de Mars, Paris', rating: 4.8, reviews: 342, category: 'Activity', image: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400&q=80', estimatedPrice: 2500 },
+        { name: 'Louvre Museum', address: 'Rue de Rivoli, Paris', rating: 4.7, reviews: 512, category: 'Activity', image: 'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=400&q=80', estimatedPrice: 2200 },
+        { name: 'Notre-Dame Cathedral', address: 'Île de la Cité, Paris', rating: 4.6, reviews: 280, category: 'Heritage', image: 'https://images.unsplash.com/photo-1478391679764-b2d8b3cd1e94?w=400&q=80', estimatedPrice: 0 },
+        { name: 'Montmartre Walking Tour', address: 'Montmartre, Paris', rating: 4.5, reviews: 198, category: 'Activity', image: 'https://images.unsplash.com/photo-1431274172761-fca41d930114?w=400&q=80', estimatedPrice: 1500 },
+        { name: 'Seine River Cruise', address: 'Port de la Bourdonnais, Paris', rating: 4.7, reviews: 320, category: 'Activity', image: 'https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?w=400&q=80', estimatedPrice: 1800 },
+        { name: 'Le Bistro Parisien', address: 'Port de la Bourdonnais, Paris', rating: 4.3, reviews: 156, category: 'Food', image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&q=80', estimatedPrice: 3500 },
+      ],
+      tokyo: [
+        { name: 'Sensoji Temple', address: 'Asakusa, Tokyo', rating: 4.7, reviews: 890, category: 'Heritage', image: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=400&q=80', estimatedPrice: 0 },
+        { name: 'Shibuya Crossing Walk', address: 'Shibuya, Tokyo', rating: 4.5, reviews: 450, category: 'Activity', image: 'https://images.unsplash.com/photo-1532236204992-f5e85c024202?w=400&q=80', estimatedPrice: 0 },
+        { name: 'Tsukiji Fish Market', address: 'Tsukiji, Tokyo', rating: 4.8, reviews: 678, category: 'Food', image: 'https://images.unsplash.com/photo-1553621042-f6e147245754?w=400&q=80', estimatedPrice: 2000 },
+        { name: 'Tokyo Tower', address: 'Minato, Tokyo', rating: 4.4, reviews: 320, category: 'Activity', image: 'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=400&q=80', estimatedPrice: 1200 },
+        { name: 'Meiji Shrine', address: 'Shibuya, Tokyo', rating: 4.6, reviews: 540, category: 'Heritage', image: 'https://images.unsplash.com/photo-1590559899731-a382839e5549?w=400&q=80', estimatedPrice: 0 },
+        { name: 'Ramen Street Experience', address: 'Tokyo Station, Tokyo', rating: 4.7, reviews: 380, category: 'Food', image: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400&q=80', estimatedPrice: 1500 },
+      ],
+      dubai: [
+        { name: 'Burj Khalifa Visit', address: 'Downtown Dubai', rating: 4.9, reviews: 1200, category: 'Activity', image: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=400&q=80', estimatedPrice: 4500 },
+        { name: 'Desert Safari', address: 'Dubai Desert', rating: 4.8, reviews: 980, category: 'Adventure', image: 'https://images.unsplash.com/photo-1546412414-8035e1776c92?w=400&q=80', estimatedPrice: 6000 },
+        { name: 'Dubai Mall & Fountain Show', address: 'Downtown Dubai', rating: 4.6, reviews: 750, category: 'Activity', image: 'https://images.unsplash.com/photo-1608159473859-0097780f2eb1?w=400&q=80', estimatedPrice: 0 },
+        { name: 'Palm Jumeirah Tour', address: 'Palm Jumeirah', rating: 4.5, reviews: 420, category: 'Activity', image: 'https://images.unsplash.com/photo-1526495124232-a04e1849168c?w=400&q=80', estimatedPrice: 3500 },
+      ],
+      london: [
+        { name: 'Tower of London', address: 'Tower Hill, London', rating: 4.7, reviews: 890, category: 'Heritage', image: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=400&q=80', estimatedPrice: 3000 },
+        { name: 'British Museum', address: 'Great Russell St, London', rating: 4.8, reviews: 1100, category: 'Activity', image: 'https://images.unsplash.com/photo-1505761671935-60b3a7427bad?w=400&q=80', estimatedPrice: 0 },
+        { name: 'Buckingham Palace', address: 'Westminster, London', rating: 4.5, reviews: 670, category: 'Heritage', image: 'https://images.unsplash.com/photo-1486299267070-83823f5448dd?w=400&q=80', estimatedPrice: 3200 },
+      ],
+      japan: [
+        { name: 'Fushimi Inari Shrine', address: 'Kyoto, Japan', rating: 4.8, reviews: 920, category: 'Heritage', image: 'https://images.unsplash.com/photo-1478436127897-769e1b3f0f36?w=400&q=80', estimatedPrice: 0 },
+        { name: 'Mount Fuji Day Trip', address: 'Shizuoka, Japan', rating: 4.9, reviews: 650, category: 'Adventure', image: 'https://images.unsplash.com/photo-1490806843957-31f4c9a91c65?w=400&q=80', estimatedPrice: 8500 },
+        { name: 'Osaka Street Food Tour', address: 'Dotonbori, Osaka', rating: 4.7, reviews: 480, category: 'Food', image: 'https://images.unsplash.com/photo-1590559899731-a382839e5549?w=400&q=80', estimatedPrice: 3000 },
+        { name: 'Hiroshima Peace Memorial', address: 'Hiroshima, Japan', rating: 4.6, reviews: 350, category: 'Heritage', image: 'https://images.unsplash.com/photo-1526481280693-3bfa7568e0f3?w=400&q=80', estimatedPrice: 200 },
+      ],
+      india: [
+        { name: 'Taj Mahal Visit', address: 'Agra, India', rating: 4.9, reviews: 2500, category: 'Heritage', image: 'https://images.unsplash.com/photo-1564507592333-c60657eea523?w=400&q=80', estimatedPrice: 1100 },
+        { name: 'Rajasthan Heritage Tour', address: 'Jaipur, India', rating: 4.7, reviews: 680, category: 'Heritage', image: 'https://images.unsplash.com/photo-1477587458883-47145ed94245?w=400&q=80', estimatedPrice: 2500 },
+        { name: 'Kerala Backwaters Cruise', address: 'Alleppey, India', rating: 4.6, reviews: 520, category: 'Activity', image: 'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=400&q=80', estimatedPrice: 3500 },
+      ],
+    };
+
+    // Try exact match, then partial
+    let results = attractionsByCity[destLower];
+    if (!results) {
+      const key = Object.keys(attractionsByCity).find(k => destLower.includes(k) || k.includes(destLower));
+      results = key ? attractionsByCity[key] : [];
+    }
+
+    // Filter by category if specified
+    if (results.length > 0 && catLower && catLower !== 'tourist attractions') {
+      const filtered = results.filter(r => r.category?.toLowerCase().includes(catLower.split(' ')[0]));
+      if (filtered.length > 0) results = filtered;
+    }
+
+    // If still empty, generate generic results
+    if (results.length === 0) {
+      results = [
+        { name: `${destination} City Tour`, address: destination, rating: 4.5, reviews: 200, category: 'Activity', image: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400&q=80', estimatedPrice: 2000 },
+        { name: `${destination} Food Walk`, address: destination, rating: 4.3, reviews: 150, category: 'Food', image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&q=80', estimatedPrice: 1500 },
+        { name: `${destination} Heritage Walk`, address: destination, rating: 4.4, reviews: 180, category: 'Heritage', image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=80', estimatedPrice: 800 },
+        { name: `${destination} Adventure Tour`, address: destination, rating: 4.6, reviews: 120, category: 'Adventure', image: 'https://images.unsplash.com/photo-1533105079780-92b9be482077?w=400&q=80', estimatedPrice: 3500 },
+      ];
+    }
+
+    res.json({ success: true, results });
+  } catch (error) {
+    console.error('Attractions error:', error.message);
+    res.json({ success: true, results: [] });
+  }
+};
+
+// ==========================================
 // Fallback Data (when API key is not configured)
 // ==========================================
 function getFallbackGeoname(name) {

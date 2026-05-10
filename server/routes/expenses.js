@@ -1,0 +1,10 @@
+const express = require('express');
+const r = express.Router();
+const c = require('../controllers/expenseController');
+const { protect } = require('../middleware/auth');
+r.use(protect);
+r.post('/add', c.addExpense);
+r.get('/trip/:tripId', c.getTripExpenses);
+r.get('/budget/:tripId', c.getBudgetDashboard);
+r.delete('/:id', c.deleteExpense);
+module.exports = r;

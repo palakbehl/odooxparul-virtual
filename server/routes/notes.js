@@ -1,0 +1,10 @@
+const express = require('express');
+const r = express.Router();
+const c = require('../controllers/noteController');
+const { protect } = require('../middleware/auth');
+r.use(protect);
+r.post('/add', c.addNote);
+r.get('/trip/:tripId', c.getTripNotes);
+r.put('/:id', c.updateNote);
+r.delete('/:id', c.deleteNote);
+module.exports = r;

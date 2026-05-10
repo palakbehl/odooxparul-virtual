@@ -80,6 +80,7 @@ export const placesAPI = {
   details: (xid) => API.get(`/places/details/${xid}`),
   batchDetails: (xids) => API.post('/places/batch-details', { xids }),
   suggestions: (category) => API.get('/places/suggestions', { params: { category } }),
+  attractions: (destination, category) => API.get('/places/attractions', { params: { destination, category } }),
 };
 
 // Admin API calls
@@ -91,5 +92,62 @@ export const adminAPI = {
   updateUserRole: (id, role) => API.put(`/admin/users/${id}/role`, { role }),
 };
 
-export default API;
+// Stop API calls
+export const stopAPI = {
+  add: (data) => API.post('/stops/add', data),
+  getByTrip: (tripId) => API.get(`/stops/trip/${tripId}`),
+  update: (id, data) => API.put(`/stops/${id}`, data),
+  delete: (id) => API.delete(`/stops/${id}`),
+};
 
+// DayPlan API calls
+export const dayPlanAPI = {
+  getByTrip: (tripId) => API.get(`/dayplans/trip/${tripId}`),
+  getByStop: (stopId) => API.get(`/dayplans/stop/${stopId}`),
+  update: (id, data) => API.put(`/dayplans/${id}`, data),
+};
+
+// Activity API calls
+export const activityAPI = {
+  add: (data) => API.post('/activities/add', data),
+  getByDay: (dayPlanId) => API.get(`/activities/day/${dayPlanId}`),
+  update: (id, data) => API.put(`/activities/${id}`, data),
+  delete: (id) => API.delete(`/activities/${id}`),
+  reorder: (data) => API.put('/activities/reorder/batch', data),
+};
+
+// Expense API calls
+export const expenseAPI = {
+  add: (data) => API.post('/expenses/add', data),
+  getByTrip: (tripId) => API.get(`/expenses/trip/${tripId}`),
+  getBudget: (tripId) => API.get(`/expenses/budget/${tripId}`),
+  delete: (id) => API.delete(`/expenses/${id}`),
+};
+
+// Community API calls
+export const communityAPI = {
+  getFeed: (params) => API.get('/community/feed', { params }),
+  createPost: (data) => API.post('/community/create', data),
+  likePost: (id) => API.put(`/community/${id}/like`),
+  comment: (id, content) => API.post(`/community/${id}/comment`, { content }),
+  savePost: (id) => API.put(`/community/${id}/save`),
+  deletePost: (id) => API.delete(`/community/${id}`),
+};
+
+// Invoice API calls
+export const invoiceAPI = {
+  create: (data) => API.post('/invoices/create', data),
+  getByTrip: (tripId) => API.get(`/invoices/trip/${tripId}`),
+  markPaid: (id) => API.put(`/invoices/${id}/paid`),
+  delete: (id) => API.delete(`/invoices/${id}`),
+};
+
+// Notes API calls
+export const noteAPI = {
+  add: (data) => API.post('/notes/add', data),
+  getByTrip: (tripId) => API.get(`/notes/trip/${tripId}`),
+  update: (id, data) => API.put(`/notes/${id}`, data),
+  delete: (id) => API.delete(`/notes/${id}`),
+};
+
+export default API;

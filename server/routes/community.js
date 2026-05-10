@@ -1,0 +1,12 @@
+const express = require('express');
+const r = express.Router();
+const c = require('../controllers/communityController');
+const { protect } = require('../middleware/auth');
+r.get('/feed', c.getFeed);
+r.use(protect);
+r.post('/create', c.createPost);
+r.put('/:id/like', c.likePost);
+r.post('/:id/comment', c.addComment);
+r.put('/:id/save', c.savePost);
+r.delete('/:id', c.deletePost);
+module.exports = r;
