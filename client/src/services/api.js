@@ -90,10 +90,14 @@ export const adminAPI = {
   getTrips: (params) => API.get('/admin/trips', { params }),
   deleteUser: (id) => API.delete(`/admin/users/${id}`),
   updateUserRole: (id, role) => API.put(`/admin/users/${id}/role`, { role }),
+  suspendUser: (id) => API.put(`/admin/users/${id}/suspend`),
   getActivities: () => API.get('/admin/activities'),
   getAnalytics: () => API.get('/admin/analytics'),
   getBudget: () => API.get('/admin/budget'),
   getChecklist: () => API.get('/admin/checklist'),
+  getCommunityPosts: (params) => API.get('/admin/community/posts', { params }),
+  deleteCommunityPost: (id) => API.delete(`/admin/community/posts/${id}`),
+  getSystemHealth: () => API.get('/admin/system-health'),
 };
 
 // Stop API calls

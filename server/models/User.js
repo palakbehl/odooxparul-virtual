@@ -53,8 +53,20 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['user', 'admin'],
+    enum: ['user', 'moderator', 'admin'],
     default: 'user'
+  },
+  isSuspended: {
+    type: Boolean,
+    default: false
+  },
+  adminPermissions: {
+    manageUsers: { type: Boolean, default: false },
+    manageTrips: { type: Boolean, default: false },
+    moderateCommunity: { type: Boolean, default: false },
+    manageReports: { type: Boolean, default: false },
+    manageDestinations: { type: Boolean, default: false },
+    analyticsAccess: { type: Boolean, default: false }
   },
   password: {
     type: String,

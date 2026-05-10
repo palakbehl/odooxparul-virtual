@@ -1,7 +1,3 @@
-// ==========================================
-// App.jsx - Main Application Router
-// ==========================================
-
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -11,6 +7,8 @@ import AdminLayout from './components/AdminLayout';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
+
+// User Dashboard Pages
 import DashboardHome from './pages/dashboard/DashboardHome';
 import MyTrips from './pages/dashboard/MyTrips';
 import CreateTrip from './pages/dashboard/CreateTrip';
@@ -23,10 +21,19 @@ import Checklist from './pages/dashboard/Checklist';
 import Invoices from './pages/dashboard/Invoices';
 import Notes from './pages/dashboard/Notes';
 import Profile from './pages/dashboard/Profile';
+
+// Admin Pages
 import AdminHome from './pages/admin/AdminHome';
 import ManageUsers from './pages/admin/ManageUsers';
+import AdminTrips from './pages/admin/AdminTrips';
+import AdminCommunity from './pages/admin/AdminCommunity';
+import AdminReports from './pages/admin/AdminReports';
 import AdminActivities from './pages/admin/AdminActivities';
 import AdminAnalytics from './pages/admin/AdminAnalytics';
+import AdminDestinations from './pages/admin/AdminDestinations';
+import AdminSystem from './pages/admin/AdminSystem';
+import AdminSettings from './pages/admin/AdminSettings';
+import AdminProfile from './pages/admin/AdminProfile';
 import AdminBudget from './pages/admin/AdminBudget';
 import AdminChecklist from './pages/admin/AdminChecklist';
 
@@ -35,17 +42,13 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          {/* Public Routes */}
+          {/* Public */}
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* Protected Dashboard Routes (Regular Users) */}
-          <Route path="/dashboard" element={
-            <ProtectedRoute>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }>
+          {/* User Dashboard */}
+          <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
             <Route index element={<DashboardHome />} />
             <Route path="trips" element={<MyTrips />} />
             <Route path="trips/new" element={<CreateTrip />} />
@@ -63,19 +66,21 @@ function App() {
             <Route path="profile" element={<Profile />} />
           </Route>
 
-          {/* Protected Admin Routes */}
-          <Route path="/admin" element={
-            <ProtectedAdminRoute>
-              <AdminLayout />
-            </ProtectedAdminRoute>
-          }>
+          {/* Admin Dashboard */}
+          <Route path="/admin" element={<ProtectedAdminRoute><AdminLayout /></ProtectedAdminRoute>}>
             <Route index element={<AdminHome />} />
             <Route path="users" element={<ManageUsers />} />
-            <Route path="activities" element={<AdminActivities />} />
+            <Route path="trips" element={<AdminTrips />} />
+            <Route path="community" element={<AdminCommunity />} />
+            <Route path="reports" element={<AdminReports />} />
             <Route path="analytics" element={<AdminAnalytics />} />
+            <Route path="destinations" element={<AdminDestinations />} />
+            <Route path="activities" element={<AdminActivities />} />
             <Route path="budget" element={<AdminBudget />} />
             <Route path="checklist" element={<AdminChecklist />} />
-            <Route path="profile" element={<Profile />} />
+            <Route path="system" element={<AdminSystem />} />
+            <Route path="settings" element={<AdminSettings />} />
+            <Route path="profile" element={<AdminProfile />} />
           </Route>
         </Routes>
       </Router>

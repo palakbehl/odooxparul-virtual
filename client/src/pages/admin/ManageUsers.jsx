@@ -7,7 +7,7 @@ import { adminAPI } from '../../services/api';
 import {
   Search, Filter, ChevronDown, ChevronLeft, ChevronRight,
   Trash2, Shield, ShieldOff, Loader2, Users, MapPin,
-  Calendar, Mail, MoreVertical
+  Calendar, Mail, MoreVertical, Ban, UserCheck
 } from 'lucide-react';
 
 const ManageUsers = () => {
@@ -58,6 +58,10 @@ const ManageUsers = () => {
     } catch (err) {
       console.error('Update role error:', err);
     }
+  };
+
+  const handleSuspend = async (id) => {
+    try { await adminAPI.suspendUser(id); loadUsers(); } catch (err) { console.error(err); }
   };
 
   const formatDate = (d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -195,10 +199,11 @@ const ManageUsers = () => {
                 {/* Role */}
                 <div className="col-span-1">
                   <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                    u.role === 'admin' ? 'bg-primary-50 text-primary-600' : 'bg-slate-100 text-slate-500'
+                    u.role === 'admin' ? 'bg-primary-50 text-primary-600' : u.role === 'moderator' ? 'bg-purple-50 text-purple-600' : 'bg-slate-100 text-slate-500'
                   }`}>
                     {u.role}
                   </span>
+                  {u.isSuspended && <span className="inline-block ml-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-red-100 text-red-600 uppercase">Suspended</span>}
                 </div>
 
                 {/* Trips */}
@@ -223,23 +228,14 @@ const ManageUsers = () => {
                   {activeMenu === u._id && (
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setActiveMenu(null)} />
-                      <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50 animate-fade-in">
-                        <button
-                          onClick={() => { handleToggleRole(u._id, u.role); setActiveMenu(null); }}
-                          className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
-                        >
+                      <div className="absolute right-0 top-full mt-1 w-52 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50 animate-fade-in">
+                        <button onClick={() => { handleToggleRole(u._id, u.role); setActiveMenu(null); }} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
                           {u.role === 'admin' ? <ShieldOff className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
                           {u.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
                         </button>
-                        {u.role !== 'admin' && (
-                          <button
-                            onClick={() => { handleDelete(u._id); setActiveMenu(null); }}
-                            className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            Delete User
-                          </button>
-                        )}
+                        {u.role !== 'admin' && <button onClick={() => { adminAPI.updateUserRole(u._id, 'moderator').then(() => { loadUsers(); setActiveMenu(null); }); }} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-purple-700 hover:bg-purple-50"><UserCheck className="w-4 h-4" />Make Moderator</button>}
+                        {u.role !== 'admin' && <button onClick={() => { handleSuspend(u._id); setActiveMenu(null); }} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-amber-700 hover:bg-amber-50"><Ban className="w-4 h-4" />{u.isSuspended ? 'Unsuspend' : 'Suspend'}</button>}
+                        {u.role !== 'admin' && <button onClick={() => { handleDelete(u._id); setActiveMenu(null); }} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50"><Trash2 className="w-4 h-4" />Delete User</button>}
                       </div>
                     </>
                   )}

@@ -66,8 +66,29 @@ const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/traveloop';
 
 mongoose.connect(MONGODB_URI)
-  .then(() => {
+  .then(async () => {
     console.log('✅ Connected to MongoDB');
+
+    // Auto-seed admin if none exists
+    try {
+      const User = require('./models/User');
+      const adminExists = await User.findOne({ role: 'admin' });
+      if (!adminExists) {
+        await User.create({
+          firstName: 'Admin',
+          lastName: 'Traveloop',
+          email: 'admin@traveloop.com',
+          password: 'admin123',
+          role: 'admin',
+          adminPermissions: {
+            manageUsers: true, manageTrips: true, moderateCommunity: true,
+            manageReports: true, manageDestinations: true, analyticsAccess: true
+          }
+        });
+        console.log('🔑 Admin user created: admin@traveloop.com / admin123');
+      }
+    } catch (e) { /* admin already exists or creation failed silently */ }
+
     app.listen(PORT, () => {
       console.log(`🚀 Traveloop server running on port ${PORT}`);
     });

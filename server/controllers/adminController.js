@@ -230,7 +230,7 @@ exports.deleteUser = async (req, res) => {
 exports.updateUserRole = async (req, res) => {
   try {
     const { role } = req.body;
-    if (!['user', 'admin'].includes(role)) {
+    if (!['user', 'moderator', 'admin'].includes(role)) {
       return res.status(400).json({ success: false, message: 'Invalid role' });
     }
 
@@ -701,6 +701,110 @@ exports.getChecklistOverview = async (req, res) => {
     });
   } catch (error) {
     console.error('Checklist overview error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ==========================================
+// @desc    Suspend/unsuspend user
+// @route   PUT /api/admin/users/:id/suspend
+// @access  Admin
+// ==========================================
+exports.suspendUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    if (user.role === 'admin') return res.status(400).json({ success: false, message: 'Cannot suspend admin' });
+    user.isSuspended = !user.isSuspended;
+    await user.save();
+    res.json({ success: true, message: user.isSuspended ? 'User suspended' : 'User unsuspended', user });
+  } catch (error) {
+    console.error('Suspend user error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ==========================================
+// @desc    Get community posts for moderation
+// @route   GET /api/admin/community/posts
+// @access  Admin
+// ==========================================
+exports.getCommunityPosts = async (req, res) => {
+  try {
+    const Post = require('../models/Post');
+    const { page = 1, limit = 20, search = '' } = req.query;
+    const query = {};
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { content: { $regex: search, $options: 'i' } }
+      ];
+    }
+    const posts = await Post.find(query)
+      .sort('-createdAt')
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit))
+      .populate('user', 'firstName lastName email profileImage');
+    const total = await Post.countDocuments(query);
+    res.json({ success: true, posts, pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / limit) } });
+  } catch (error) {
+    console.error('Get community posts error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ==========================================
+// @desc    Delete community post (moderation)
+// @route   DELETE /api/admin/community/posts/:id
+// @access  Admin
+// ==========================================
+exports.deleteCommunityPost = async (req, res) => {
+  try {
+    const Post = require('../models/Post');
+    await Post.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'Post deleted' });
+  } catch (error) {
+    console.error('Delete post error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ==========================================
+// @desc    Get system health info
+// @route   GET /api/admin/system-health
+// @access  Admin
+// ==========================================
+exports.getSystemHealth = async (req, res) => {
+  try {
+    const mongoose = require('mongoose');
+    const os = require('os');
+    const dbState = ['disconnected', 'connected', 'connecting', 'disconnecting'];
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const uptime = process.uptime();
+
+    const Post = require('../models/Post');
+    const Expense = require('../models/Expense');
+
+    const [totalUsers, totalTrips, totalPosts, totalExpenses] = await Promise.all([
+      User.countDocuments(),
+      Trip.countDocuments(),
+      Post.countDocuments().catch(() => 0),
+      Expense.countDocuments().catch(() => 0)
+    ]);
+
+    res.json({
+      success: true,
+      health: {
+        server: { status: 'online', uptime: Math.floor(uptime), uptimeFormatted: `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m` },
+        database: { status: dbState[mongoose.connection.readyState] || 'unknown', name: mongoose.connection.name || 'traveloop' },
+        memory: { total: Math.round(totalMem / 1024 / 1024), free: Math.round(freeMem / 1024 / 1024), used: Math.round((totalMem - freeMem) / 1024 / 1024), usagePercent: Math.round(((totalMem - freeMem) / totalMem) * 100) },
+        collections: { users: totalUsers, trips: totalTrips, posts: totalPosts, expenses: totalExpenses },
+        node: { version: process.version, platform: process.platform }
+      }
+    });
+  } catch (error) {
+    console.error('System health error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
