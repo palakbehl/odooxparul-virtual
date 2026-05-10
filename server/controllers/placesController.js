@@ -1,107 +1,314 @@
 // ==========================================
-// Places Controller - Outscraper API Proxy
+// Places Controller - OpenTripMap API Integration
+// API Docs: https://dev.opentripmap.org/docs
+// Endpoints used:
+//   1. /en/places/geoname  → Get coordinates for a city name
+//   2. /en/places/radius   → Get places within a radius of lat/lon
+//   3. /en/places/autosuggest → Autosuggest places by partial name
+//   4. /en/places/xid/{xid}   → Get full details of a single place
 // ==========================================
 
 const axios = require('axios');
 
-const OUTSCRAPER_KEY = process.env.OUTSCRAPER_API_KEY;
-const OUTSCRAPER_BASE = 'https://api.app.outscraper.com';
+const OTM_KEY = process.env.OPENTRIPMAP_API_KEY;
+const OTM_BASE = 'https://api.opentripmap.com/0.1';
 
-// Helper to call Outscraper
-const outscraper = async (endpoint, params) => {
-  const res = await axios.get(`${OUTSCRAPER_BASE}${endpoint}`, {
-    headers: { 'X-API-KEY': OUTSCRAPER_KEY },
-    params,
+// Helper: call OpenTripMap
+const otm = async (endpoint, params = {}) => {
+  const url = `${OTM_BASE}${endpoint}`;
+  const res = await axios.get(url, {
+    params: { ...params, apikey: OTM_KEY },
     timeout: 15000
   });
   return res.data;
 };
 
-// @desc    Search places / city autocomplete
-// @route   GET /api/places/search?q=Paris
+// ==========================================
+// 1. GEONAME - Get lat/lon for a city name
+// GET /api/places/geoname?name=Paris
+// ==========================================
+exports.getGeoname = async (req, res) => {
+  try {
+    const { name } = req.query;
+    if (!name || name.length < 2) return res.json({ success: true, result: null });
+
+    if (!OTM_KEY) {
+      return res.json({ success: true, result: getFallbackGeoname(name), source: 'fallback' });
+    }
+
+    const data = await otm('/en/places/geoname', { name });
+    // Returns: { name, country, lat, lon, population, timezone, status }
+    res.json({ success: true, result: data, source: 'opentripmap' });
+  } catch (error) {
+    console.error('Geoname error:', error.message);
+    const { name } = req.query;
+    res.json({ success: true, result: getFallbackGeoname(name || ''), source: 'fallback' });
+  }
+};
+
+// ==========================================
+// 2. RADIUS - Get places within radius of lat/lon
+// GET /api/places/radius?lat=48.85&lon=2.35&radius=5000&kinds=interesting_places&limit=20
+// ==========================================
+exports.getPlacesByRadius = async (req, res) => {
+  try {
+    const {
+      lat, lon,
+      radius = 10000,
+      kinds = 'interesting_places',
+      limit = 20,
+      rate = '2',
+      format = 'json'
+    } = req.query;
+
+    if (!lat || !lon) return res.json({ success: true, results: [] });
+
+    if (!OTM_KEY) {
+      return res.json({ success: true, results: getFallbackPlaces(kinds), source: 'fallback' });
+    }
+
+    const data = await otm('/en/places/radius', {
+      lat: parseFloat(lat),
+      lon: parseFloat(lon),
+      radius: parseInt(radius),
+      kinds,
+      limit: parseInt(limit),
+      rate,
+      format
+    });
+
+    // data is an array of { xid, name, dist, rate, wikidata, kinds, point: {lat, lon}, osm }
+    const results = (Array.isArray(data) ? data : []).filter(p => p.name).map(p => ({
+      xid: p.xid,
+      name: p.name,
+      kinds: p.kinds,
+      distance: Math.round(p.dist),
+      rate: p.rate,
+      lat: p.point?.lat,
+      lon: p.point?.lon,
+      wikidata: p.wikidata || null
+    }));
+
+    res.json({ success: true, results, source: 'opentripmap' });
+  } catch (error) {
+    console.error('Radius search error:', error.message);
+    const { kinds } = req.query;
+    res.json({ success: true, results: getFallbackPlaces(kinds || ''), source: 'fallback' });
+  }
+};
+
+// ==========================================
+// 3. AUTOSUGGEST - Search places by partial name + location
+// GET /api/places/autosuggest?name=Eiffel&lat=48.85&lon=2.35&radius=50000
+// ==========================================
+exports.autosuggest = async (req, res) => {
+  try {
+    const {
+      name,
+      lat, lon,
+      radius = 100000,
+      kinds = '',
+      limit = 15,
+      rate = '2',
+      format = 'json'
+    } = req.query;
+
+    if (!name || name.length < 2) return res.json({ success: true, results: [] });
+
+    if (!OTM_KEY) {
+      return res.json({ success: true, results: getFallbackPlaces(name), source: 'fallback' });
+    }
+
+    const params = { name, radius: parseInt(radius), limit: parseInt(limit), rate, format };
+    if (lat && lon) {
+      params.lat = parseFloat(lat);
+      params.lon = parseFloat(lon);
+    }
+    if (kinds) params.kinds = kinds;
+
+    const data = await otm('/en/places/autosuggest', params);
+
+    const results = (Array.isArray(data) ? data : []).filter(p => p.name).map(p => ({
+      xid: p.xid,
+      name: p.name,
+      kinds: p.kinds,
+      distance: Math.round(p.dist || 0),
+      rate: p.rate,
+      lat: p.point?.lat,
+      lon: p.point?.lon,
+      wikidata: p.wikidata || null
+    }));
+
+    res.json({ success: true, results, source: 'opentripmap' });
+  } catch (error) {
+    console.error('Autosuggest error:', error.message);
+    const { name } = req.query;
+    res.json({ success: true, results: getFallbackPlaces(name || ''), source: 'fallback' });
+  }
+};
+
+// ==========================================
+// 4. PLACE DETAILS - Full info for a single place by xid
+// GET /api/places/details/:xid
+// ==========================================
+exports.getPlaceDetails = async (req, res) => {
+  try {
+    const { xid } = req.params;
+    if (!xid) return res.json({ success: true, result: null });
+
+    if (!OTM_KEY) {
+      return res.json({ success: true, result: { xid, name: 'Sample Place', kinds: 'interesting_places' }, source: 'fallback' });
+    }
+
+    const data = await otm(`/en/places/xid/${xid}`);
+    // Returns: { xid, name, address, rate, wikidata, kinds, sources, bbox, point, wikipedia, image, preview, wikipedia_extracts, info }
+    const result = {
+      xid: data.xid,
+      name: data.name,
+      address: data.address || {},
+      rate: data.rate,
+      kinds: data.kinds,
+      wikipedia: data.wikipedia || '',
+      image: data.image || data.preview?.source || '',
+      description: data.wikipedia_extracts?.text || data.info?.descr || '',
+      lat: data.point?.lat,
+      lon: data.point?.lon,
+      url: data.url || data.otm || '',
+      wikidata: data.wikidata || ''
+    };
+
+    res.json({ success: true, result, source: 'opentripmap' });
+  } catch (error) {
+    console.error('Place details error:', error.message);
+    res.json({ success: true, result: null, source: 'fallback' });
+  }
+};
+
+// ==========================================
+// 5. SEARCH FLOW - Combined geoname + radius in one call (convenience)
+// GET /api/places/search?q=Paris&kinds=cultural&limit=20&radius=10000
+// This is the main endpoint used by the Discover page
+// ==========================================
 exports.searchPlaces = async (req, res) => {
   try {
-    const { q, limit = 8 } = req.query;
-    if (!q || q.length < 2) return res.json({ success: true, results: [] });
+    const {
+      q,
+      kinds = 'interesting_places',
+      limit = 20,
+      radius = 20000,
+      rate = '2'
+    } = req.query;
 
-    if (!OUTSCRAPER_KEY) {
-      // Fallback static suggestions when no API key
-      return res.json({ success: true, results: getFallbackCities(q), source: 'fallback' });
+    if (!q || q.length < 2) return res.json({ success: true, results: [], total: 0 });
+
+    if (!OTM_KEY) {
+      return res.json({ success: true, results: getFallbackPlaces(q), total: getFallbackPlaces(q).length, source: 'fallback' });
     }
 
-    const data = await outscraper('/maps/search-v3', {
-      query: q,
-      limit,
-      language: 'en',
-      region: 'us'
+    // Step 1: Get coordinates for the city/place name
+    const geo = await otm('/en/places/geoname', { name: q });
+    if (!geo || !geo.lat || !geo.lon) {
+      // If geoname fails, try autosuggest instead
+      const suggest = await otm('/en/places/autosuggest', {
+        name: q, radius: 100000, limit: parseInt(limit), rate, format: 'json'
+      });
+      const results = (Array.isArray(suggest) ? suggest : []).filter(p => p.name).map(p => ({
+        xid: p.xid,
+        name: p.name,
+        kinds: p.kinds,
+        distance: Math.round(p.dist || 0),
+        rate: p.rate,
+        lat: p.point?.lat,
+        lon: p.point?.lon
+      }));
+      return res.json({ success: true, results, total: results.length, source: 'opentripmap', method: 'autosuggest' });
+    }
+
+    // Step 2: Get places within the radius of the geoname coordinates
+    const data = await otm('/en/places/radius', {
+      lat: geo.lat,
+      lon: geo.lon,
+      radius: parseInt(radius),
+      kinds,
+      limit: parseInt(limit),
+      rate,
+      format: 'json'
     });
 
-    const results = (data.data || []).flat().map(p => ({
-      name: p.name || p.query,
-      address: p.full_address || p.address || '',
-      rating: p.rating || 0,
-      reviews: p.reviews || 0,
-      category: p.type || p.subtypes?.[0] || '',
-      image: p.photo || p.main_photo || '',
-      lat: p.latitude,
-      lng: p.longitude,
-      placeId: p.place_id || ''
+    const results = (Array.isArray(data) ? data : []).filter(p => p.name).map(p => ({
+      xid: p.xid,
+      name: p.name,
+      kinds: p.kinds,
+      distance: Math.round(p.dist),
+      rate: p.rate,
+      lat: p.point?.lat,
+      lon: p.point?.lon
     }));
 
-    res.json({ success: true, results, source: 'outscraper' });
+    res.json({
+      success: true,
+      results,
+      total: results.length,
+      location: { name: geo.name, country: geo.country, lat: geo.lat, lon: geo.lon },
+      source: 'opentripmap',
+      method: 'geoname+radius'
+    });
   } catch (error) {
-    console.error('Places search error:', error.message);
+    console.error('Combined search error:', error.message);
     const { q } = req.query;
-    res.json({ success: true, results: getFallbackCities(q || ''), source: 'fallback' });
+    res.json({ success: true, results: getFallbackPlaces(q || ''), total: 0, source: 'fallback' });
   }
 };
 
-// @desc    Get tourist attractions for a destination
-// @route   GET /api/places/attractions?destination=Paris&category=tourist
-exports.getAttractions = async (req, res) => {
+// ==========================================
+// 6. BATCH DETAILS - Get details for multiple xids
+// POST /api/places/batch-details  body: { xids: ['xid1','xid2',...] }
+// ==========================================
+exports.batchDetails = async (req, res) => {
   try {
-    const { destination, category = 'tourist attractions', limit = 12 } = req.query;
-    if (!destination) return res.json({ success: true, results: [] });
-
-    if (!OUTSCRAPER_KEY) {
-      return res.json({ success: true, results: getFallbackAttractions(destination, category), source: 'fallback' });
+    const { xids } = req.body;
+    if (!xids || !Array.isArray(xids) || xids.length === 0) {
+      return res.json({ success: true, results: [] });
     }
 
-    const query = `${category} in ${destination}`;
-    const data = await outscraper('/maps/search-v3', {
-      query,
-      limit,
-      language: 'en'
-    });
+    if (!OTM_KEY) {
+      return res.json({ success: true, results: [], source: 'fallback' });
+    }
 
-    const results = (data.data || []).flat().map(p => ({
-      name: p.name || '',
-      address: p.full_address || p.address || '',
-      rating: p.rating || 0,
-      reviews: p.reviews || 0,
-      category: p.type || p.subtypes?.[0] || category,
-      image: p.photo || p.main_photo || '',
-      estimatedPrice: p.price_level ? p.price_level * 500 : 0,
-      lat: p.latitude,
-      lng: p.longitude,
-      placeId: p.place_id || '',
-      website: p.site || ''
+    // Fetch details in parallel (max 10 to avoid rate-limiting)
+    const batch = xids.slice(0, 10);
+    const promises = batch.map(xid =>
+      otm(`/en/places/xid/${xid}`).catch(() => null)
+    );
+    const details = await Promise.all(promises);
+
+    const results = details.filter(Boolean).map(data => ({
+      xid: data.xid,
+      name: data.name,
+      address: data.address || {},
+      rate: data.rate,
+      kinds: data.kinds,
+      image: data.image || data.preview?.source || '',
+      description: data.wikipedia_extracts?.text || data.info?.descr || '',
+      lat: data.point?.lat,
+      lon: data.point?.lon,
+      wikipedia: data.wikipedia || ''
     }));
 
-    res.json({ success: true, results, source: 'outscraper' });
+    res.json({ success: true, results, source: 'opentripmap' });
   } catch (error) {
-    console.error('Attractions error:', error.message);
-    const { destination, category } = req.query;
-    res.json({ success: true, results: getFallbackAttractions(destination || '', category || ''), source: 'fallback' });
+    console.error('Batch details error:', error.message);
+    res.json({ success: true, results: [], source: 'fallback' });
   }
 };
 
-// @desc    Get activity suggestions (popular, beaches, mountains, etc.)
-// @route   GET /api/places/suggestions?category=Popular
+// ==========================================
+// KEEP: Original suggestion endpoint (curated)
+// GET /api/places/suggestions?category=Popular
+// ==========================================
 exports.getSuggestions = async (req, res) => {
   try {
     const { category = 'Popular' } = req.query;
-    // Return curated destination suggestions by category
     res.json({ success: true, results: getCuratedSuggestions(category) });
   } catch (error) {
     console.error('Suggestions error:', error.message);
@@ -110,40 +317,50 @@ exports.getSuggestions = async (req, res) => {
 };
 
 // ==========================================
-// Fallback Data (when API key is not set)
+// Fallback Data (when API key is not configured)
 // ==========================================
-function getFallbackCities(query) {
-  const cities = [
-    { name: 'Paris', address: 'Paris, France', rating: 4.8, category: 'City', image: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400&q=80' },
-    { name: 'Tokyo', address: 'Tokyo, Japan', rating: 4.7, category: 'City', image: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=400&q=80' },
-    { name: 'New York', address: 'New York, USA', rating: 4.6, category: 'City', image: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=400&q=80' },
-    { name: 'London', address: 'London, UK', rating: 4.7, category: 'City', image: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=400&q=80' },
-    { name: 'Dubai', address: 'Dubai, UAE', rating: 4.6, category: 'City', image: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=400&q=80' },
-    { name: 'Bali', address: 'Bali, Indonesia', rating: 4.8, category: 'Island', image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=400&q=80' },
-    { name: 'Rome', address: 'Rome, Italy', rating: 4.7, category: 'City', image: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=400&q=80' },
-    { name: 'Barcelona', address: 'Barcelona, Spain', rating: 4.6, category: 'City', image: 'https://images.unsplash.com/photo-1583422409516-2895a77efded?w=400&q=80' },
-    { name: 'Singapore', address: 'Singapore', rating: 4.7, category: 'City', image: 'https://images.unsplash.com/photo-1525625293386-3f8f99389edd?w=400&q=80' },
-    { name: 'Santorini', address: 'Santorini, Greece', rating: 4.8, category: 'Island', image: 'https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?w=400&q=80' },
-    { name: 'Interlaken', address: 'Interlaken, Switzerland', rating: 4.6, category: 'Mountains', image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=80' },
-    { name: 'Jaipur', address: 'Jaipur, India', rating: 4.5, category: 'Heritage', image: 'https://images.unsplash.com/photo-1599661046289-e31897846e41?w=400&q=80' },
-    { name: 'Sydney', address: 'Sydney, Australia', rating: 4.7, category: 'City', image: 'https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=400&q=80' },
-    { name: 'Maldives', address: 'Maldives', rating: 4.9, category: 'Beach', image: 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=400&q=80' },
-    { name: 'Krabi', address: 'Krabi, Thailand', rating: 4.8, category: 'Beach', image: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=400&q=80' },
-  ];
-  const q = query.toLowerCase();
-  return cities.filter(c => c.name.toLowerCase().includes(q) || c.address.toLowerCase().includes(q)).slice(0, 8);
+function getFallbackGeoname(name) {
+  const cities = {
+    paris:       { name: 'Paris',      country: 'FR', lat: 48.8566, lon: 2.3522, population: 2161000 },
+    tokyo:       { name: 'Tokyo',      country: 'JP', lat: 35.6762, lon: 139.6503, population: 13960000 },
+    london:      { name: 'London',     country: 'GB', lat: 51.5074, lon: -0.1278, population: 8982000 },
+    'new york':  { name: 'New York',   country: 'US', lat: 40.7128, lon: -74.0060, population: 8336000 },
+    dubai:       { name: 'Dubai',      country: 'AE', lat: 25.2048, lon: 55.2708, population: 3331000 },
+    rome:        { name: 'Rome',       country: 'IT', lat: 41.9028, lon: 12.4964, population: 2873000 },
+    bali:        { name: 'Bali',       country: 'ID', lat: -8.3405, lon: 115.092, population: 4320000 },
+    barcelona:   { name: 'Barcelona',  country: 'ES', lat: 41.3874, lon: 2.1686, population: 1620000 },
+    singapore:   { name: 'Singapore',  country: 'SG', lat: 1.3521, lon: 103.8198, population: 5686000 },
+    santorini:   { name: 'Santorini',  country: 'GR', lat: 36.3932, lon: 25.4615, population: 15550 },
+    interlaken:  { name: 'Interlaken', country: 'CH', lat: 46.6863, lon: 7.8632, population: 5500 },
+    jaipur:      { name: 'Jaipur',     country: 'IN', lat: 26.9124, lon: 75.7873, population: 3046000 },
+    sydney:      { name: 'Sydney',     country: 'AU', lat: -33.8688, lon: 151.2093, population: 5312000 },
+    maldives:    { name: 'Maldives',   country: 'MV', lat: 3.2028, lon: 73.2207, population: 557000 },
+    istanbul:    { name: 'Istanbul',   country: 'TR', lat: 41.0082, lon: 28.9784, population: 15460000 },
+    pokhara:     { name: 'Pokhara',    country: 'NP', lat: 28.2096, lon: 83.9856, population: 264991 },
+    'cape town': { name: 'Cape Town',  country: 'ZA', lat: -33.9249, lon: 18.4241, population: 4618000 },
+    mumbai:      { name: 'Mumbai',     country: 'IN', lat: 19.0760, lon: 72.8777, population: 20411000 },
+    delhi:       { name: 'Delhi',      country: 'IN', lat: 28.7041, lon: 77.1025, population: 16787941 },
+    goa:         { name: 'Goa',        country: 'IN', lat: 15.2993, lon: 74.124, population: 1458545 },
+    manali:      { name: 'Manali',     country: 'IN', lat: 32.2396, lon: 77.1887, population: 8096 },
+  };
+  const key = name.toLowerCase().trim();
+  return cities[key] || { name, country: '', lat: 0, lon: 0, population: 0, status: 'NOT_FOUND' };
 }
 
-function getFallbackAttractions(destination, category) {
-  const base = [
-    { name: `${destination} Walking Tour`, category: 'Tour', rating: 4.5, reviews: 320, image: '', estimatedPrice: 1500 },
-    { name: `${destination} Food Experience`, category: 'Food', rating: 4.7, reviews: 215, image: '', estimatedPrice: 2000 },
-    { name: `Top Museums in ${destination}`, category: 'Museum', rating: 4.6, reviews: 450, image: '', estimatedPrice: 800 },
-    { name: `${destination} Night Tour`, category: 'Tour', rating: 4.4, reviews: 180, image: '', estimatedPrice: 1200 },
-    { name: `Adventure Sports - ${destination}`, category: 'Adventure', rating: 4.3, reviews: 95, image: '', estimatedPrice: 3500 },
-    { name: `${destination} Local Market`, category: 'Shopping', rating: 4.2, reviews: 650, image: '', estimatedPrice: 500 },
+function getFallbackPlaces(query) {
+  const q = (query || '').toLowerCase();
+  const places = [
+    { xid: 'fb1', name: 'Walking Tour',     kinds: 'interesting_places,cultural', rate: 3, distance: 500, lat: 0, lon: 0 },
+    { xid: 'fb2', name: 'Historic Museum',   kinds: 'museums,cultural',            rate: 3, distance: 1200, lat: 0, lon: 0 },
+    { xid: 'fb3', name: 'City Park',         kinds: 'natural,parks',               rate: 2, distance: 800, lat: 0, lon: 0 },
+    { xid: 'fb4', name: 'Famous Cathedral',  kinds: 'religion,architecture',       rate: 3, distance: 1500, lat: 0, lon: 0 },
+    { xid: 'fb5', name: 'Local Market',      kinds: 'shops,foods',                 rate: 2, distance: 350, lat: 0, lon: 0 },
+    { xid: 'fb6', name: 'Tower Viewpoint',   kinds: 'architecture,towers',         rate: 3, distance: 2100, lat: 0, lon: 0 },
+    { xid: 'fb7', name: 'Adventure Sports',  kinds: 'sport,amusements',            rate: 2, distance: 3000, lat: 0, lon: 0 },
+    { xid: 'fb8', name: 'Botanical Garden',  kinds: 'gardens,natural',             rate: 2, distance: 1800, lat: 0, lon: 0 },
   ];
-  return base;
+  if (q) return places.map(p => ({ ...p, name: `${q.charAt(0).toUpperCase() + q.slice(1)} ${p.name}` }));
+  return places;
 }
 
 function getCuratedSuggestions(category) {
@@ -155,48 +372,16 @@ function getCuratedSuggestions(category) {
       { name: 'Santorini', country: 'Greece', rating: 4.8, tags: ['Beach', 'Views', 'Romance'], image: 'https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?w=400&q=80' },
       { name: 'New York', country: 'USA', rating: 4.6, tags: ['City Life', 'Shopping', 'Culture'], image: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=400&q=80' },
       { name: 'Dubai', country: 'UAE', rating: 4.6, tags: ['Luxury', 'City Life', 'Adventure'], image: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=400&q=80' },
-      { name: 'Banff', country: 'Canada', rating: 4.7, tags: ['Mountains', 'Lakes', 'Nature'], image: 'https://images.unsplash.com/photo-1503614472-8c93d56e92ce?w=400&q=80' },
-      { name: 'Jaipur', country: 'India', rating: 4.5, tags: ['Heritage', 'Culture', 'History'], image: 'https://images.unsplash.com/photo-1599661046289-e31897846e41?w=400&q=80' },
     ],
     Beaches: [
-      { name: 'Krabi', country: 'Thailand', rating: 4.8, tags: ['Beaches', 'Island', 'Nature'], image: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=400&q=80' },
-      { name: 'Maldives', country: 'Maldives', rating: 4.9, tags: ['Beach', 'Luxury', 'Diving'], image: 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=400&q=80' },
-      { name: 'Santorini', country: 'Greece', rating: 4.8, tags: ['Beach', 'Views', 'Romance'], image: 'https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?w=400&q=80' },
-      { name: 'Bali', country: 'Indonesia', rating: 4.7, tags: ['Beach', 'Culture', 'Surfing'], image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=400&q=80' },
-      { name: 'Cancún', country: 'Mexico', rating: 4.5, tags: ['Beach', 'Nightlife', 'Resorts'], image: 'https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?w=400&q=80' },
-      { name: 'Phuket', country: 'Thailand', rating: 4.6, tags: ['Beach', 'Nightlife', 'Island'], image: 'https://images.unsplash.com/photo-1589394815804-964ed0be2eb5?w=400&q=80' },
+      { name: 'Krabi', country: 'Thailand', rating: 4.8, tags: ['Beaches', 'Island'], image: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=400&q=80' },
+      { name: 'Maldives', country: 'Maldives', rating: 4.9, tags: ['Beach', 'Luxury'], image: 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=400&q=80' },
+      { name: 'Bali', country: 'Indonesia', rating: 4.7, tags: ['Beach', 'Culture'], image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=400&q=80' },
     ],
     Mountains: [
-      { name: 'Interlaken', country: 'Switzerland', rating: 4.6, tags: ['Mountains', 'Adventure', 'Nature'], image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=80' },
-      { name: 'Banff', country: 'Canada', rating: 4.7, tags: ['Mountains', 'Lakes', 'Nature'], image: 'https://images.unsplash.com/photo-1503614472-8c93d56e92ce?w=400&q=80' },
-      { name: 'Manali', country: 'India', rating: 4.5, tags: ['Mountains', 'Trekking', 'Snow'], image: 'https://images.unsplash.com/photo-1626621331169-5f34be280ed9?w=400&q=80' },
-      { name: 'Queenstown', country: 'New Zealand', rating: 4.8, tags: ['Mountains', 'Adventure', 'Bungee'], image: 'https://images.unsplash.com/photo-1589871973318-9ca1258faa5d?w=400&q=80' },
-      { name: 'Patagonia', country: 'Argentina', rating: 4.7, tags: ['Mountains', 'Hiking', 'Glaciers'], image: 'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=400&q=80' },
-      { name: 'Zermatt', country: 'Switzerland', rating: 4.6, tags: ['Mountains', 'Skiing', 'Matterhorn'], image: 'https://images.unsplash.com/photo-1529973625058-a665431e23f0?w=400&q=80' },
-    ],
-    Heritage: [
-      { name: 'Jaipur', country: 'India', rating: 4.5, tags: ['Heritage', 'Culture', 'History'], image: 'https://images.unsplash.com/photo-1599661046289-e31897846e41?w=400&q=80' },
-      { name: 'Rome', country: 'Italy', rating: 4.7, tags: ['Heritage', 'History', 'Art'], image: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=400&q=80' },
-      { name: 'Athens', country: 'Greece', rating: 4.5, tags: ['Heritage', 'History', 'Culture'], image: 'https://images.unsplash.com/photo-1555993539-1732b0258235?w=400&q=80' },
-      { name: 'Cairo', country: 'Egypt', rating: 4.4, tags: ['Heritage', 'Pyramids', 'History'], image: 'https://images.unsplash.com/photo-1539768942893-daf53e736495?w=400&q=80' },
-      { name: 'Kyoto', country: 'Japan', rating: 4.7, tags: ['Heritage', 'Temples', 'Gardens'], image: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=400&q=80' },
-      { name: 'Petra', country: 'Jordan', rating: 4.8, tags: ['Heritage', 'Ancient', 'Desert'], image: 'https://images.unsplash.com/photo-1579606032821-4e6161c81571?w=400&q=80' },
-    ],
-    Adventure: [
-      { name: 'Queenstown', country: 'New Zealand', rating: 4.8, tags: ['Adventure', 'Bungee', 'Nature'], image: 'https://images.unsplash.com/photo-1589871973318-9ca1258faa5d?w=400&q=80' },
-      { name: 'Costa Rica', country: 'Costa Rica', rating: 4.6, tags: ['Adventure', 'Rainforest', 'Wildlife'], image: 'https://images.unsplash.com/photo-1518259102261-b40117eabbc9?w=400&q=80' },
-      { name: 'Iceland', country: 'Iceland', rating: 4.7, tags: ['Adventure', 'Northern Lights', 'Volcanoes'], image: 'https://images.unsplash.com/photo-1504829857797-ddff29c27927?w=400&q=80' },
-      { name: 'Nepal', country: 'Nepal', rating: 4.6, tags: ['Adventure', 'Trekking', 'Himalayas'], image: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=400&q=80' },
-      { name: 'Cape Town', country: 'South Africa', rating: 4.5, tags: ['Adventure', 'Safari', 'Nature'], image: 'https://images.unsplash.com/photo-1580060839134-75a5edca2e99?w=400&q=80' },
-      { name: 'Patagonia', country: 'Argentina', rating: 4.7, tags: ['Adventure', 'Hiking', 'Glaciers'], image: 'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=400&q=80' },
-    ],
-    'Food & Culture': [
-      { name: 'Tokyo', country: 'Japan', rating: 4.7, tags: ['Food', 'Culture', 'City Life'], image: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=400&q=80' },
-      { name: 'Bangkok', country: 'Thailand', rating: 4.5, tags: ['Food', 'Culture', 'Temples'], image: 'https://images.unsplash.com/photo-1508009603885-50cf7c579365?w=400&q=80' },
-      { name: 'Barcelona', country: 'Spain', rating: 4.6, tags: ['Food', 'Architecture', 'Beach'], image: 'https://images.unsplash.com/photo-1583422409516-2895a77efded?w=400&q=80' },
-      { name: 'Istanbul', country: 'Turkey', rating: 4.6, tags: ['Food', 'Culture', 'Markets'], image: 'https://images.unsplash.com/photo-1524231757912-21f4fe3a7200?w=400&q=80' },
-      { name: 'Marrakech', country: 'Morocco', rating: 4.4, tags: ['Food', 'Culture', 'Markets'], image: 'https://images.unsplash.com/photo-1597212618440-806262de4f6b?w=400&q=80' },
-      { name: 'Lima', country: 'Peru', rating: 4.5, tags: ['Food', 'Culture', 'History'], image: 'https://images.unsplash.com/photo-1531968455001-5c5272a67c71?w=400&q=80' },
+      { name: 'Interlaken', country: 'Switzerland', rating: 4.6, tags: ['Mountains', 'Adventure'], image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=80' },
+      { name: 'Banff', country: 'Canada', rating: 4.7, tags: ['Mountains', 'Lakes'], image: 'https://images.unsplash.com/photo-1503614472-8c93d56e92ce?w=400&q=80' },
+      { name: 'Manali', country: 'India', rating: 4.5, tags: ['Mountains', 'Trekking'], image: 'https://images.unsplash.com/photo-1626621331169-5f34be280ed9?w=400&q=80' },
     ],
   };
   return suggestions[category] || suggestions.Popular;
